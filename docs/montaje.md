@@ -81,7 +81,7 @@ Twitch y TikTok no necesitan clave para leer el chat.
 
 ## 6. La voz
 
-En ElevenLabs, crea la voz del personaje con Voice Design (por ejemplo: hombre colombiano de unos 45 años, acento paisa, voz grave, ritmo pausado y seguro). Guarda la que te guste y copia su ID en StreamBot → Personaje y voz. No uses la voz de una persona real: lo prohíben ElevenLabs y las normas de Rockstar.
+En ElevenLabs, crea la voz del personaje con Voice Design (por ejemplo: hombre colombiano de unos 45 años, acento paisa, voz grave, ritmo pausado y seguro). Guarda la que te guste y copia su ID en StreamBot → Ajustes → Co-host y voz. No uses la voz de una persona real: lo prohíben ElevenLabs y las normas de Rockstar.
 
 ## 7. Antes de cada directo
 

@@ -32,12 +32,12 @@ Abre `http://127.0.0.1:4747/panel/` para el panel y `http://127.0.0.1:4747/overl
 npm start
 ```
 
-En el panel:
+En la pestaña Ajustes del panel:
 
 1. **Claves**: pega la de Anthropic (cerebro) y la de ElevenLabs (voz). Para YouTube, una clave de YouTube Data API v3.
-2. **Personaje y voz**: nombre del personaje, juego e ID de la voz de ElevenLabs.
+2. **Co-host y voz**: juego e ID de la voz de ElevenLabs. El nombre del personaje está en la pestaña Marca.
 3. **Plataformas**: canal de Twitch (no necesita clave), enlace del directo de YouTube, usuario de TikTok.
-4. **OBS**: copia la dirección del overlay y añádela en OBS como fuente de navegador.
+4. **OBS**: en la pestaña Marca, copia la dirección del overlay y añádela en OBS como fuente de navegador.
 
 La guía completa de consola, capturadora, OBS y multistream está en [docs/montaje.md](docs/montaje.md).
 
