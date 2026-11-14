@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StreamBot Overlay</title>
+<link rel="stylesheet" href="overlay.css">
+</head>
+<body>
+  <ul id="chat" aria-label="Chat unificado"></ul>
+  <section id="voice" hidden>
+    <div id="reply"></div>
+    <div id="bubble">
+      <div id="who"><span id="name"></span><span id="ai">Voz generada con IA</span></div>
+      <p id="subtitle"></p>
+    </div>
+  </section>
+  <button id="unlock" hidden>Haz clic para activar el audio</button>
+  <script src="overlay.js"></script>
+</body>
+</html>

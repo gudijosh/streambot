@@ -1,0 +1,39 @@
+{
+  "name": "streambot",
+  "version": "0.1.0",
+  "description": "Centro de control para directos faceless con co-host IA (Twitch, YouTube, TikTok)",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "demo": "STREAMBOT_DEMO=1 tsx src/index.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "app": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --mac dmg"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "obs-websocket-js": "^5.0.8",
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "tiktok-live-connector": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.12",
+    "electron": "^45.3.2",
+    "electron-builder": "^26.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "build": {
+    "appId": "com.streambot.app",
+    "productName": "StreamBot",
+    "files": ["dist/**", "public/**", "persona/**", "electron/**", "package.json"],
+    "mac": { "category": "public.app-category.video", "target": "dmg" }
+  }
+}
