@@ -41,7 +41,12 @@ export interface Settings {
   tiktok: { enabled: boolean; username: string };
   agent: {
     enabled: boolean;
+    /** "claude" (en la nube) o "local" (modelo en este ordenador). */
+    engine: string;
     model: string;
+    /** Servidor del modelo local, con API de chat compatible con OpenAI (Ollama). */
+    localUrl: string;
+    localModel: string;
     /** Pausa mínima entre intervenciones del personaje. */
     minGapSeconds: number;
     /** Segundos de silencio antes de que el personaje hable por su cuenta. */
@@ -52,11 +57,24 @@ export interface Settings {
     watchGame: boolean;
   };
   voice: {
+    /** "elevenlabs" (en la nube) o "local" (modelo en este ordenador). */
+    engine: string;
     voiceId: string;
     modelId: string;
     stability: number;
     similarity: number;
     speed: number;
+    /** Servidor de voz local (mlx-audio). */
+    localUrl: string;
+    localModel: string;
+    /** Voz predefinida del modelo local; vacío si se clona con un audio de referencia. */
+    localVoice: string;
+    /** Código de idioma que espera el modelo local (Kokoro: "e" para español). */
+    localLang: string;
+    /** Audio de referencia para clonar la voz, como ruta en este ordenador. */
+    localRefAudio: string;
+    /** Lo que se dice en el audio de referencia. */
+    localRefText: string;
   };
   obs: { enabled: boolean; url: string };
   filter: { bannedWords: string[]; blockLinks: boolean };

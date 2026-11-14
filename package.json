@@ -11,6 +11,7 @@
     "dev": "tsx watch src/index.ts",
     "demo": "STREAMBOT_DEMO=1 tsx src/index.ts",
     "test": "tsx --test tests/*.test.ts",
+    "probar-voz": "tsx scripts/probar-voz.ts",
     "app": "npm run build && electron .",
     "dist": "npm run build && electron-builder --mac dmg"
   },

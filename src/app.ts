@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { Agent, type LogEntry } from "./agent/agent.js";
 import { ClaudeBrain, DemoBrain, generateClipCopy, loadPersona } from "./agent/brain.js";
+import { LocalBrain } from "./agent/local-brain.js";
 import { BrandKit, MAX_UPLOAD_BYTES, SLOTS, isSlot, parsePairs } from "./brand.js";
 import { ChatFilter } from "./chat/filter.js";
 import { buildFfmpegArgs, findFfmpeg, isClipFormat, runFfmpeg } from "./clips/ffmpeg.js";
@@ -23,6 +24,7 @@ import { Stats } from "./stats.js";
 import type { Brain, ChatMessage, Connector, ConnectorContext, ConnectorStatus, Platform, Voice } from "./types.js";
 import { Viewers } from "./viewers.js";
 import { ElevenLabsVoice, SilentVoice } from "./voice/elevenlabs.js";
+import { LocalVoice } from "./voice/local.js";
 
 export interface AppOptions {
   port?: number;
@@ -66,9 +68,9 @@ export class StreamBotApp {
     sim: { state: "off" },
   };
   private brain: Brain | null = null;
-  private brainKind: "claude" | "demo" | "none" = "none";
+  private brainKind: "claude" | "local" | "demo" | "none" = "none";
   private voice: Voice = new SilentVoice();
-  private voiceKind: "elevenlabs" | "silent" = "silent";
+  private voiceKind: "elevenlabs" | "local" | "silent" = "silent";
   private simOn = false;
   private ffmpegBin: string | null = null;
   private exportJob: { abort: AbortController; clipId: string } | null = null;
@@ -385,6 +387,10 @@ export class StreamBotApp {
     if (this.options.brain) {
       this.brain = this.options.brain;
       this.brainKind = "demo";
+    } else if (settings.agent.engine === "local" && settings.agent.localModel.trim()) {
+      const persona = loadPersona(settings.personaName, settings.game);
+      this.brain = new LocalBrain(settings.agent.localUrl, settings.agent.localModel, persona);
+      this.brainKind = "local";
     } else if (secrets.anthropicApiKey) {
       const persona = loadPersona(settings.personaName, settings.game);
       this.brain = new ClaudeBrain(secrets.anthropicApiKey, settings.agent.model, persona);
@@ -400,6 +406,9 @@ export class StreamBotApp {
     if (this.options.voice) {
       this.voice = this.options.voice;
       this.voiceKind = "elevenlabs";
+    } else if (settings.voice.engine === "local" && settings.voice.localModel.trim()) {
+      this.voice = new LocalVoice(settings.voice);
+      this.voiceKind = "local";
     } else if (secrets.elevenLabsApiKey && settings.voice.voiceId) {
       this.voice = new ElevenLabsVoice(secrets.elevenLabsApiKey, settings.voice);
       this.voiceKind = "elevenlabs";

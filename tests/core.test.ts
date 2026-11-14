@@ -354,3 +354,158 @@ test("prompt del clip: incluye el contexto y neutraliza etiquetas", () => {
   assert.equal(prompt.match(/<\/lo_que_pasa_en_el_clip>/g)!.length, 1);
   assert.ok(prompt.includes("ana: QUÉ LOCURA") && prompt.includes("- Así se maneja, muchachos."));
 });
+
+// ---- Voz y cerebro locales ----
+import http from "node:http";
+import type { AddressInfo } from "node:net";
+import { LocalBrain, ThinkStripper } from "../src/agent/local-brain.js";
+import { LocalVoice, parseWav, toPcm16 } from "../src/voice/local.js";
+
+function wav(samples: number[], rate: number, opts: { channels?: number; float?: boolean; junk?: boolean } = {}): Buffer {
+  const channels = opts.channels ?? 1;
+  const bytes = opts.float ? 4 : 2;
+  const data = Buffer.alloc(samples.length * bytes);
+  samples.forEach((v, i) => (opts.float ? data.writeFloatLE(v, i * 4) : data.writeInt16LE(Math.round(v * 32767), i * 2)));
+  const fmt = Buffer.alloc(24);
+  fmt.write("fmt ", 0);
+  fmt.writeUInt32LE(16, 4);
+  fmt.writeUInt16LE(opts.float ? 3 : 1, 8);
+  fmt.writeUInt16LE(channels, 10);
+  fmt.writeUInt32LE(rate, 12);
+  fmt.writeUInt32LE(rate * channels * bytes, 16);
+  fmt.writeUInt16LE(channels * bytes, 20);
+  fmt.writeUInt16LE(bytes * 8, 22);
+  const junk = opts.junk ? Buffer.concat([Buffer.from("LIST"), Buffer.from([3, 0, 0, 0]), Buffer.from("abc"), Buffer.from([0])]) : Buffer.alloc(0);
+  const head = Buffer.alloc(8);
+  head.write("data", 0);
+  head.writeUInt32LE(data.length, 4);
+  const riff = Buffer.alloc(12);
+  riff.write("RIFF", 0);
+  riff.writeUInt32LE(4 + fmt.length + junk.length + 8 + data.length, 4);
+  riff.write("WAVE", 8);
+  return Buffer.concat([riff, fmt, junk, head, data]);
+}
+
+async function withServer(
+  handler: (req: http.IncomingMessage, body: any, res: http.ServerResponse) => void,
+  run: (url: string) => Promise<void>,
+): Promise<void> {
+  const server = http.createServer(async (req, res) => {
+    const chunks: Buffer[] = [];
+    for await (const c of req) chunks.push(c);
+    handler(req, chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : null, res);
+  });
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  try {
+    await run(`http://127.0.0.1:${(server.address() as AddressInfo).port}`);
+  } finally {
+    server.closeAllConnections();
+    await new Promise((r) => server.close(r));
+  }
+}
+
+async function* list<T>(items: T[]): AsyncIterable<T> {
+  yield* items;
+}
+
+test("wav: lee PCM y float, mezcla a mono, salta bloques extra y cambia la frecuencia", () => {
+  const mono = parseWav(wav([0, 0.5, -0.5, 1], 24000));
+  assert.equal(mono.sampleRate, 24000);
+  assert.deepEqual([...mono.samples].map((v) => Math.round(v * 100) / 100), [0, 0.5, -0.5, 1]);
+  const stereo = parseWav(wav([1, 0, 0.5, 0.5], 44100, { channels: 2, float: true, junk: true }));
+  assert.deepEqual([stereo.sampleRate, [...stereo.samples]], [44100, [0.5, 0.5]]);
+  assert.throws(() => parseWav(Buffer.from("ID3 esto es un mp3")), /no devolvió un WAV/);
+  assert.equal(toPcm16(mono, 24000).length, 8);
+  const up = toPcm16({ sampleRate: 12000, samples: new Float32Array([0, 1]) }, 24000);
+  assert.deepEqual([0, 1, 2, 3].map((i) => up.readInt16LE(i * 2)), [0, 16384, 32767, 32767]);
+  assert.equal(toPcm16({ sampleRate: 48000, samples: new Float32Array(480) }, 24000).length, 480);
+});
+
+const LOCAL = { localUrl: "", localModel: "modelo", localVoice: "em_alex", localLang: "e", localRefAudio: "", localRefText: "", speed: 1 };
+
+test("voz local: pide cada frase con los campos del servidor y entrega el audio en orden", async () => {
+  const bodies: any[] = [];
+  let active = 0;
+  let peak = 0;
+  await withServer(
+    (_req, body, res) => {
+      bodies.push(body);
+      active++;
+      peak = Math.max(peak, active);
+      // La primera frase tarda más: aun así debe sonar antes que la segunda.
+      setTimeout(() => {
+        active--;
+        res.writeHead(200, { "Content-Type": "audio/wav" });
+        res.end(wav(new Array(body.input.length).fill(0.1), 24000));
+      }, body.input === "uno" ? 80 : 5);
+    },
+    async (url) => {
+      const voice = new LocalVoice({ ...LOCAL, localUrl: `${url}/`, localRefAudio: " /tmp/ref.wav " });
+      const got: number[] = [];
+      await voice.speak(list(["uno", "segunda", "la tercera"]), (pcm) => got.push(pcm.length / 2), new AbortController().signal);
+      assert.deepEqual(got, [3, 7, 10]);
+      assert.ok(peak <= 2, `como mucho dos frases a la vez (hubo ${peak})`);
+      assert.deepEqual(bodies[0], {
+        model: "modelo", input: "uno", response_format: "wav", speed: 1, voice: "em_alex", lang_code: "e", ref_audio: "/tmp/ref.wav",
+      });
+    },
+  );
+});
+
+test("voz local: errores claros si el servidor falla, no genera audio o no está", async () => {
+  const signal = new AbortController().signal;
+  await withServer(
+    (_req, body, res) => {
+      if (body.input === "vacio") return void res.writeHead(200).end();
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ detail: "Model not found: 'modelo'" }));
+    },
+    async (url) => {
+      const voice = new LocalVoice({ ...LOCAL, localUrl: url });
+      await assert.rejects(voice.speak(list(["hola"]), () => {}, signal), /Voz local: Model not found/);
+      await assert.rejects(voice.synthesize("vacio", signal), /no generó audio/);
+    },
+  );
+  const off = new LocalVoice({ ...LOCAL, localUrl: "http://127.0.0.1:9" });
+  await assert.rejects(off.synthesize("hola", signal), /No encuentro el servidor de voz local/);
+});
+
+test("cerebro local: quita los bloques <think> aunque lleguen partidos", () => {
+  const s = new ThinkStripper();
+  const out = ["<th", "ink>plan secreto</th", "ink>Qué más ", "pues, <", "b>mijo."].map((d) => s.push(d)).join("") + s.flush();
+  assert.equal(out, "Qué más pues, <b>mijo.");
+  const open = new ThinkStripper();
+  assert.equal(open.push("hola <think>sin cerrar") + open.flush(), "hola ");
+});
+
+test("cerebro local: lee la respuesta en streaming y avisa si el modelo no existe", async () => {
+  let seen: any = null;
+  await withServer(
+    (_req, body, res) => {
+      seen = body;
+      if (body.model === "falta") {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        return void res.end(JSON.stringify({ error: { message: "model 'falta' not found" } }));
+      }
+      res.writeHead(200, { "Content-Type": "text/event-stream" });
+      const send = (content: string) => res.write(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`);
+      send("<think>pienso</think>Qué más ");
+      res.write(": comentario\n\ndata: {roto\n\n");
+      send("pues, ana.");
+      res.end("data: [DONE]\n\n");
+    },
+    async (url) => {
+      const input = { mode: "reply" as const, messages: [msg({ user: "ana" })], recentSaid: [], game: "GTA VI", minutesLive: 1, image: "AAAA" };
+      let text = "";
+      for await (const d of new LocalBrain(`${url}/v1/`, "qwen", "Eres Don Escobar.").reply(input, new AbortController().signal)) text += d;
+      assert.equal(text, "Qué más pues, ana.");
+      assert.equal(seen.messages[0].content, "Eres Don Escobar.");
+      assert.ok(seen.messages[1].content.includes("[twitch] ana") && seen.stream === true);
+      const missing = new LocalBrain(`${url}/v1`, "falta", "p").reply(input, new AbortController().signal);
+      await assert.rejects(async () => { for await (const _ of missing); }, (e: any) => e.fatal === true && /not found/.test(e.message));
+    },
+  );
+  const off = new LocalBrain("http://127.0.0.1:9/v1", "qwen", "p").reply(
+    { mode: "idle", messages: [], recentSaid: [], game: "GTA VI", minutesLive: 1 }, new AbortController().signal);
+  await assert.rejects(async () => { for await (const _ of off); }, /¿Está Ollama abierto\?/);
+});

@@ -95,6 +95,7 @@ Plataformas, co-host y voz, filtro y comandos del chat, clips, OBS y claves.
 - **Comandos del chat**: define `redes = Síganme en TikTok` y cuando alguien escriba `!redes` el personaje lo dirá.
 - **Memoria de espectadores**: el personaje sabe quién escribe por primera vez y quién es habitual.
 - **Alertas**: suscripciones, regalos, donaciones y seguidores aparecen en pantalla con tu imagen y sonido.
+- **Voz y cerebro en local**: en un Mac con Apple Silicon la voz puede generarse sin ElevenLabs (mlx-audio) y el personaje puede pensar sin Claude (Ollama). Ver [docs/voz-local.md](docs/voz-local.md).
 - **Comentar el juego**: opcional; con OBS conectado, el personaje mira una captura de la partida cuando habla por su cuenta.
 - **Atajos en la app de escritorio**: `Cmd+Shift+C` guarda un clip, `Cmd+Shift+P` pausa o reanuda al personaje y `Cmd+Shift+S` salta lo que está diciendo.
 
@@ -116,8 +117,9 @@ npm test
 | `src/brand.ts` | Kit de marca: huecos para las artes |
 | `src/obs.ts` | Control de OBS: emisión, grabación, búfer de repetición, escenas |
 | `src/stats.ts`, `src/viewers.ts` | Estadísticas del directo y memoria de espectadores |
-| `src/agent/` | Personaje (Claude), troceado por frases y orquestación |
-| `src/voice/` | Voz por streaming con ElevenLabs |
+| `src/agent/` | Personaje (Claude o modelo local), troceado por frases y orquestación |
+| `src/voice/` | Voz por streaming con ElevenLabs o con un servidor local |
+| `scripts/` | `probar-voz`: mide la voz local en tu ordenador |
 | `src/server.ts`, `src/app.ts` | Servidor local (solo 127.0.0.1) y unión de todo |
 | `public/` | Panel de control, overlay y pantallas para OBS |
 | `brand/` | Artes de la marca incluidas en el proyecto |

@@ -87,7 +87,18 @@ function fillForms(settings) {
     }
   }
   updateQuota();
+  updateEngines();
 }
+
+// Muestra solo los campos del motor elegido (nube o local) para el cerebro y la voz.
+function updateEngines() {
+  for (const select of document.querySelectorAll("[data-engine-for]")) {
+    for (const group of document.querySelectorAll(`[data-engine^="${select.dataset.engineFor}:"]`)) {
+      group.hidden = group.dataset.engine !== `${select.dataset.engineFor}:${select.value}`;
+    }
+  }
+}
+for (const select of document.querySelectorAll("[data-engine-for]")) select.addEventListener("change", updateEngines);
 
 function readForm(form) {
   const patch = {};
@@ -161,12 +172,14 @@ function renderLive() {
   let text;
   let cls = "";
   if (a.problem) { text = a.problem; cls = "bad"; }
-  else if (a.brain === "none") { text = "Falta la clave de Anthropic (Ajustes → Claves). Hasta entonces el personaje solo dice lo que escribas."; cls = "bad"; }
+  else if (a.brain === "none") { text = "Falta la clave de Anthropic (Ajustes → Claves) o elegir un modelo local. Hasta entonces el personaje solo dice lo que escribas."; cls = "bad"; }
   else if (!state.settings.agent.enabled || a.paused) text = "En pausa: el personaje no responde al chat.";
   else if (a.speaking) { text = "Hablando…"; cls = "live"; }
   else { text = `Escuchando el chat · ${a.pending} en espera`; cls = "live"; }
   if (a.brain === "demo") text += " (respuestas de ejemplo)";
-  if (a.voice === "silent" && a.brain !== "none") text += " · Sin voz: solo subtítulos (faltan la clave de ElevenLabs o el ID de voz).";
+  if (a.brain === "local") text += " · Cerebro local";
+  if (a.voice === "local") text += " · Voz local";
+  if (a.voice === "silent" && a.brain !== "none") text += " · Sin voz: solo subtítulos (faltan la clave de ElevenLabs y el ID de voz, o elegir voz local).";
   status.textContent = text;
   status.className = cls;
 
@@ -209,7 +222,7 @@ function renderStats(s) {
     ["Suscripciones · regalos", `${s.events.sub} · ${s.events.gift}`],
     ["Donaciones · seguidores", `${s.events.donation} · ${s.events.follow}`],
     ["Intervenciones del personaje", s.utterances],
-    ["Créditos de voz (aprox.)", s.voiceCredits.toLocaleString("es")],
+    ["Créditos de voz (aprox.)", state?.agent.voice === "local" ? "0 (voz local)" : s.voiceCredits.toLocaleString("es")],
   ];
   $("#stats").replaceChildren(...rows.flatMap(([k, v]) => [el("dt", { textContent: k }), el("dd", { textContent: String(v) })]));
   $("#top").replaceChildren(...s.top.map((t) => el("li", {}, t.user, el("span", { textContent: String(t.count) }))));

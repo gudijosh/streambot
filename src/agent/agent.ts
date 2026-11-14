@@ -196,6 +196,8 @@ export class Agent {
       if (abort.signal.aborted) output.stop(id);
     }
 
+    // Si esta intervención salió bien, el aviso de un fallo anterior ya no aplica.
+    if (!error && !this.paused && !abort.signal.aborted) this.problem = "";
     if (text) {
       this.recentSaid.push(text);
       if (this.recentSaid.length > 6) this.recentSaid.shift();
