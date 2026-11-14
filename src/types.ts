@@ -10,6 +10,8 @@ export interface ChatMessage {
   kind: MessageKind;
   /** Detalle del evento (p. ej. "100 bits", "Rosa x5"). */
   detail?: string;
+  /** Dato sobre el espectador para el personaje (p. ej. "primera vez en el canal"). */
+  note?: string;
   ts: number;
 }
 
@@ -46,6 +48,8 @@ export interface Settings {
     idleSeconds: number;
     /** Mensajes de chat que atiende como máximo en una intervención. */
     maxPerTurn: number;
+    /** Si está activo y OBS conectado, el personaje mira una captura del juego cuando habla por su cuenta. */
+    watchGame: boolean;
   };
   voice: {
     voiceId: string;
@@ -56,6 +60,26 @@ export interface Settings {
   };
   obs: { enabled: boolean; url: string };
   filter: { bannedWords: string[]; blockLinks: boolean };
+  brand: {
+    /** Color principal del overlay, en formato #rrggbb. */
+    accent: string;
+    /** Mostrar las redes sociales rotando en el overlay. */
+    ticker: boolean;
+    /** Una red por línea: "TikTok = @usuario". */
+    socials: string[];
+  };
+  clips: {
+    /** Carpeta de exportación; vacío = carpeta por defecto. */
+    folder: string;
+    /** Guardar un clip automáticamente cuando el chat se dispara. */
+    autoOnSpike: boolean;
+    /** Permitir que el chat pida un clip con !clip. */
+    chatCommand: boolean;
+    /** Ruta de ffmpeg; vacío = buscarlo automáticamente. */
+    ffmpegPath: string;
+  };
+  /** Comandos del chat, uno por línea: "redes = Sígueme en TikTok". */
+  commands: string[];
 }
 
 export interface Secrets {
@@ -72,6 +96,14 @@ export interface BrainInput {
   recentSaid: string[];
   game: string;
   minutesLive: number;
+  /** Captura del juego en JPEG (base64), si el personaje puede ver la partida. */
+  image?: string;
+}
+
+export interface ClipCopy {
+  title: string;
+  description: string;
+  hashtags: string[];
 }
 
 export interface Brain {

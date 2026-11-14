@@ -1,6 +1,6 @@
 # StreamBot
 
-Centro de control para directos faceless: une el chat de Twitch, YouTube y TikTok, y un co-host IA con voz propia lee el chat y responde en tiempo real mientras juegas en silencio.
+Estudio todo en uno para directos faceless: une el chat de Twitch, YouTube y TikTok, un co-host IA con voz propia responde al chat mientras juegas en silencio, guarda y recorta clips para redes, y aplica las artes de tu marca al directo.
 
 ```
 Twitch ─┐
@@ -55,12 +55,48 @@ Abre el panel en su propia ventana. Para generar el instalador `.dmg` (hay que h
 npm run dist
 ```
 
-## Controles durante el directo
+## Pestañas del panel
 
-- **Pausar / Reanudar**: el personaje deja de responder al chat.
-- **Saltar**: corta lo que esté diciendo.
-- **Que el personaje diga**: escribes una frase y la dice tal cual, también en pausa.
+### Directo
+
+- **Guardar clip**: guarda los últimos segundos de la partida (necesita el búfer de repetición de OBS).
+- **OBS**: emitir, grabar, búfer de repetición y cambio de escena sin salir del panel.
+- **Co-host**: pausar, saltar lo que está diciendo, o escribir una frase para que la diga tal cual.
+- **Este directo**: mensajes, personas en el chat, eventos, intervenciones y créditos de voz gastados.
 - **Chat simulado**: mensajes de mentira para ensayar.
+
+### Clips
+
+- **Momentos**: se marcan con el botón, con `!clip` en el chat o solos cuando el chat se dispara.
+- **Vídeos**: clips guardados, grabaciones de OBS y cualquier vídeo que añadas por su ruta.
+- **Editor**: marca inicio y fin, elige formato (vertical 9:16 con fondo difuminado, vertical recortado u horizontal), añade tu logo como marca de agua y exporta.
+- **Texto para publicar**: la IA propone título, descripción y hashtags a partir de lo que pasó en el chat en ese momento.
+
+Exportar necesita ffmpeg. En el Mac:
+
+```bash
+brew install ffmpeg
+```
+
+### Marca
+
+- **Artes**: sube logo, avatar del personaje, marco, fondos de las pantallas de inicio, pausa y despedida, e imagen y sonido de alerta. Se aplican al momento.
+- **Identidad**: nombre del personaje, color principal y redes sociales, que rotan en una esquina del directo.
+- **Fuentes para OBS**: direcciones del overlay y de las tres pantallas, listas para copiar.
+
+Las artes también se pueden dejar en la carpeta [`brand/`](brand/README.md) del proyecto.
+
+### Ajustes
+
+Plataformas, co-host y voz, filtro y comandos del chat, clips, OBS y claves.
+
+## Extras
+
+- **Comandos del chat**: define `redes = Síganme en TikTok` y cuando alguien escriba `!redes` el personaje lo dirá.
+- **Memoria de espectadores**: el personaje sabe quién escribe por primera vez y quién es habitual.
+- **Alertas**: suscripciones, regalos, donaciones y seguidores aparecen en pantalla con tu imagen y sonido.
+- **Comentar el juego**: opcional; con OBS conectado, el personaje mira una captura de la partida cuando habla por su cuenta.
+- **Atajos en la app de escritorio**: `Cmd+Shift+C` guarda un clip, `Cmd+Shift+P` pausa o reanuda al personaje y `Cmd+Shift+S` salta lo que está diciendo.
 
 ## El personaje
 
@@ -76,14 +112,20 @@ npm test
 |---|---|
 | `src/connectors/` | Chat de Twitch (IRC anónimo), YouTube (API oficial), TikTok (librería no oficial) y simulador |
 | `src/chat/` | Filtro y selector de mensajes |
+| `src/clips/` | Momentos destacados, biblioteca de vídeos y exportación con ffmpeg |
+| `src/brand.ts` | Kit de marca: huecos para las artes |
+| `src/obs.ts` | Control de OBS: emisión, grabación, búfer de repetición, escenas |
+| `src/stats.ts`, `src/viewers.ts` | Estadísticas del directo y memoria de espectadores |
 | `src/agent/` | Personaje (Claude), troceado por frases y orquestación |
 | `src/voice/` | Voz por streaming con ElevenLabs |
 | `src/server.ts`, `src/app.ts` | Servidor local (solo 127.0.0.1) y unión de todo |
-| `public/` | Panel de control y overlay para OBS |
+| `public/` | Panel de control, overlay y pantallas para OBS |
+| `brand/` | Artes de la marca incluidas en el proyecto |
 | `electron/` | Ventana de escritorio |
 
 ## Límites conocidos
 
 - **YouTube**: cada consulta al chat gasta cuota de la API. Con la cuota gratuita y el intervalo por defecto (6 s) alcanza para unas 3,3 h de directo al día; el panel lo calcula al cambiar el intervalo.
 - **TikTok**: no hay API oficial de chat. El conector puede dejar de funcionar si TikTok cambia algo; el resto de la app no se ve afectado.
+- **Clips**: el vídeo sale del búfer de repetición o de las grabaciones de OBS. Graba en MP4 para poder previsualizar en el panel; otros formatos se exportan igual pero no se ven en el editor.
 - **Emitir en TikTok desde ordenador** requiere que TikTok te dé clave de stream (normalmente a partir de ~1.000 seguidores).

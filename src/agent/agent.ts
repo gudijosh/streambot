@@ -31,6 +31,8 @@ export interface AgentDeps {
   brain(): Brain | null;
   voice(): Voice;
   output: AgentOutput;
+  /** Captura del juego en JPEG base64, o null si no hay. */
+  screenshot?: () => Promise<string | null>;
   now?: () => number;
 }
 
@@ -217,19 +219,24 @@ export class Agent {
     output.status();
   }
 
-  private generate(
+  private async *generate(
     job: Exclude<Job, { mode: "manual" }>,
     settings: Settings,
     signal: AbortSignal,
   ): AsyncIterable<string> {
+    let image: string | undefined;
+    if (job.mode === "idle" && settings.agent.watchGame && this.deps.screenshot) {
+      image = (await this.deps.screenshot().catch(() => null)) ?? undefined;
+    }
     const input: BrainInput = {
       mode: job.mode,
       messages: job.messages,
       recentSaid: this.recentSaid,
       game: settings.game,
       minutesLive: Math.round((this.now() - this.startedAt) / 60_000),
+      image,
     };
-    return this.deps.brain()!.reply(input, signal);
+    yield* this.deps.brain()!.reply(input, signal);
   }
 }
 

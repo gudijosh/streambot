@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: Settings = {
     minGapSeconds: 4,
     idleSeconds: 45,
     maxPerTurn: 3,
+    watchGame: false,
   },
   voice: {
     voiceId: "",
@@ -25,6 +26,9 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   obs: { enabled: false, url: "ws://127.0.0.1:4455" },
   filter: { bannedWords: [], blockLinks: true },
+  brand: { accent: "#e8b64c", ticker: true, socials: [] },
+  clips: { folder: "", autoOnSpike: true, chatCommand: true, ffmpegPath: "" },
+  commands: [],
 };
 
 const EMPTY_SECRETS: Secrets = {
@@ -66,8 +70,10 @@ export class ConfigStore {
   settings: Settings = structuredClone(DEFAULT_SETTINGS);
   private stored: Secrets = { ...EMPTY_SECRETS };
   private readonly file: string;
+  readonly dir: string;
 
   constructor(dir = configDir()) {
+    this.dir = dir;
     this.file = path.join(dir, "config.json");
     this.load();
   }

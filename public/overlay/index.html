@@ -7,14 +7,28 @@
 <link rel="stylesheet" href="overlay.css">
 </head>
 <body>
+  <img id="frame" alt="" hidden>
+  <img id="logo" alt="" hidden>
   <ul id="chat" aria-label="Chat unificado"></ul>
-  <section id="voice" hidden>
-    <div id="reply"></div>
-    <div id="bubble">
-      <div id="who"><span id="name"></span><span id="ai">Voz generada con IA</span></div>
-      <p id="subtitle"></p>
+  <div id="top">
+    <section id="voice" hidden>
+      <div id="reply"></div>
+      <div id="bubble">
+        <img id="avatar" alt="" hidden>
+        <div id="bubble-text">
+          <div id="who"><span id="name"></span><span id="ai">Voz generada con IA</span></div>
+          <p id="subtitle"></p>
+        </div>
+      </div>
+    </section>
+    <div id="alert" hidden>
+      <img id="alert-img" alt="" hidden>
+      <div><strong id="alert-user"></strong><span id="alert-text"></span></div>
     </div>
-  </section>
+  </div>
+  <div id="ticker" hidden></div>
+  <div id="toast" hidden></div>
+  <audio id="alert-sound" preload="auto"></audio>
   <button id="unlock" hidden>Haz clic para activar el audio</button>
   <script src="overlay.js"></script>
 </body>

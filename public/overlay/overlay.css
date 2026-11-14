@@ -52,13 +52,23 @@ html, body {
 #chat li.tiktok .user { color: var(--tiktok); }
 #chat li.event .user { color: inherit; }
 
-#voice {
+#frame { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
+#logo { position: absolute; top: 3vh; left: 2vw; width: min(9vw, 170px); height: auto; opacity: 0.92; }
+
+/* Arriba y centrado, para no tapar los subtítulos ni el HUD del juego. */
+#top {
   position: absolute;
-  /* Arriba y centrado, para no tapar los subtítulos ni el HUD del juego. */
   left: 50%;
   top: 4vh;
   transform: translateX(-50%);
   width: min(52vw, 980px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1vh;
+}
+#voice {
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.6vh;
@@ -79,11 +89,24 @@ html, body {
 }
 #reply:empty { display: none; }
 #bubble {
+  display: flex;
+  align-items: center;
+  gap: 1em;
   background: var(--panel);
   border: 2px solid var(--gold);
   border-radius: 10px;
   padding: 0.7em 1em 0.8em;
 }
+#bubble-text { flex: 1; min-width: 0; }
+#avatar {
+  width: clamp(56px, 5.5vw, 110px);
+  height: clamp(56px, 5.5vw, 110px);
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--gold);
+  flex: none;
+}
+#voice.speaking #avatar { animation: talk 0.5s ease-in-out infinite alternate; }
 #who { display: flex; justify-content: space-between; align-items: baseline; gap: 1em; }
 #name {
   color: var(--gold);
@@ -118,10 +141,51 @@ html, body {
 @keyframes in {
   from { opacity: 0; transform: translateY(8px); }
 }
-#voice { animation-name: in-center; }
-@keyframes in-center {
-  from { opacity: 0; transform: translate(-50%, 8px); }
+@keyframes talk {
+  to { transform: scale(1.06); box-shadow: 0 0 0 4px color-mix(in srgb, var(--gold) 45%, transparent); }
 }
+
+#alert {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  background: var(--gold);
+  color: #1c1407;
+  border-radius: 10px;
+  padding: 0.6em 1.1em;
+  font-size: clamp(15px, 1.35vw, 26px);
+  animation: in 0.3s ease-out;
+}
+#alert[hidden], #ticker[hidden], #toast[hidden] { display: none; }
+#alert-img { height: clamp(40px, 4vw, 80px); width: auto; }
+#alert-user { margin-right: 0.4em; }
+
+#ticker {
+  position: absolute;
+  right: 2vw;
+  bottom: 3vh;
+  background: var(--panel);
+  border-left: 4px solid var(--gold);
+  border-radius: 6px;
+  padding: 0.45em 0.9em;
+  font-size: clamp(13px, 1.05vw, 20px);
+  transition: opacity 0.5s;
+}
+#ticker.swap { opacity: 0; }
+#ticker b { color: var(--gold); margin-right: 0.5em; }
+
+#toast {
+  position: absolute;
+  right: 2vw;
+  top: 3vh;
+  background: var(--panel);
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  padding: 0.4em 0.8em;
+  font-size: clamp(12px, 0.95vw, 18px);
+  animation: in 0.25s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  #chat li, #voice { animation: none; }
+  #chat li, #voice, #alert, #toast, #voice.speaking #avatar { animation: none; }
 }

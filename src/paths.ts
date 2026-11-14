@@ -5,3 +5,5 @@ import { fileURLToPath } from "node:url";
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const PUBLIC_DIR = path.join(ROOT, "public");
 export const PERSONA_FILE = path.join(ROOT, "persona", "personaje.md");
+/** Artes de la marca incluidas en el proyecto. */
+export const BRAND_DIR = path.join(ROOT, "brand");

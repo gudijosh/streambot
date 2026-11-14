@@ -12,11 +12,13 @@ const MIME: Record<string, string> = {
   ".png": "image/png",
 };
 
-export type Role = "panel" | "overlay";
+export type Role = "panel" | "overlay" | "scene";
 
 export interface ApiHandlers {
   /** Devuelve el cuerpo JSON de respuesta; lanza un Error para responder 400. */
   handle(method: string, route: string, body: unknown): Promise<unknown>;
+  /** Rutas con cuerpo o respuesta binarios (vídeos, artes). Devuelve true si atendió la petición. */
+  raw(req: http.IncomingMessage, res: http.ServerResponse, url: URL): Promise<boolean>;
   /** Mensaje inicial al conectar un cliente. */
   hello(role: Role): unknown[];
   onClientMessage(role: Role, data: unknown): void;
@@ -38,7 +40,8 @@ export class LocalServer {
         socket.destroy();
         return;
       }
-      const role: Role = url.searchParams.get("role") === "overlay" ? "overlay" : "panel";
+      const asked = url.searchParams.get("role");
+      const role: Role = asked === "overlay" || asked === "scene" ? asked : "panel";
       this.wss.handleUpgrade(req, socket, head, (ws) => {
         this.clients.set(ws, role);
         for (const msg of this.api.hello(role)) ws.send(JSON.stringify(msg));
@@ -78,10 +81,11 @@ export class LocalServer {
     return n;
   }
 
-  send(role: Role | "all", msg: unknown): void {
+  send(role: Role | Role[] | "all", msg: unknown): void {
     const text = JSON.stringify(msg);
+    const wanted = role === "all" ? null : Array.isArray(role) ? role : [role];
     for (const [ws, r] of this.clients) {
-      if ((role === "all" || r === role) && ws.readyState === WebSocket.OPEN) ws.send(text);
+      if ((!wanted || wanted.includes(r)) && ws.readyState === WebSocket.OPEN) ws.send(text);
     }
   }
 
@@ -110,6 +114,17 @@ export class LocalServer {
     const host = req.headers.host ?? "";
     if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host)) {
       res.writeHead(403).end();
+      return;
+    }
+    if (req.method !== "GET" && req.method !== "HEAD" && !this.sameOrigin(req)) {
+      res.writeHead(403).end();
+      return;
+    }
+    try {
+      if (await this.api.raw(req, res, url)) return;
+    } catch (err) {
+      if (!res.headersSent) res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ error: err instanceof Error ? err.message : "Error" }));
       return;
     }
     if (url.pathname.startsWith("/api/")) return this.onApi(req, res, url.pathname.slice(5));
