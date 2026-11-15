@@ -10,6 +10,8 @@ export interface ChatMessage {
   kind: MessageKind;
   /** Detalle del evento (p. ej. "100 bits", "Rosa x5"). */
   detail?: string;
+  /** Dato sobre el espectador para el personaje (p. ej. "primera vez en el canal"). */
+  note?: string;
   ts: number;
 }
 
@@ -39,23 +41,63 @@ export interface Settings {
   tiktok: { enabled: boolean; username: string };
   agent: {
     enabled: boolean;
+    /** "claude" (en la nube) o "local" (modelo en este ordenador). */
+    engine: string;
     model: string;
+    /** Servidor del modelo local, con API de chat compatible con OpenAI (Ollama). */
+    localUrl: string;
+    localModel: string;
     /** Pausa mínima entre intervenciones del personaje. */
     minGapSeconds: number;
     /** Segundos de silencio antes de que el personaje hable por su cuenta. */
     idleSeconds: number;
     /** Mensajes de chat que atiende como máximo en una intervención. */
     maxPerTurn: number;
+    /** Si está activo y OBS conectado, el personaje mira una captura del juego cuando habla por su cuenta. */
+    watchGame: boolean;
   };
   voice: {
+    /** "elevenlabs" (en la nube) o "local" (modelo en este ordenador). */
+    engine: string;
     voiceId: string;
     modelId: string;
     stability: number;
     similarity: number;
     speed: number;
+    /** Servidor de voz local (mlx-audio). */
+    localUrl: string;
+    localModel: string;
+    /** Voz predefinida del modelo local; vacío si se clona con un audio de referencia. */
+    localVoice: string;
+    /** Código de idioma que espera el modelo local (Kokoro: "e" para español). */
+    localLang: string;
+    /** Audio de referencia para clonar la voz, como ruta en este ordenador. */
+    localRefAudio: string;
+    /** Lo que se dice en el audio de referencia. */
+    localRefText: string;
   };
   obs: { enabled: boolean; url: string };
   filter: { bannedWords: string[]; blockLinks: boolean };
+  brand: {
+    /** Color principal del overlay, en formato #rrggbb. */
+    accent: string;
+    /** Mostrar las redes sociales rotando en el overlay. */
+    ticker: boolean;
+    /** Una red por línea: "TikTok = @usuario". */
+    socials: string[];
+  };
+  clips: {
+    /** Carpeta de exportación; vacío = carpeta por defecto. */
+    folder: string;
+    /** Guardar un clip automáticamente cuando el chat se dispara. */
+    autoOnSpike: boolean;
+    /** Permitir que el chat pida un clip con !clip. */
+    chatCommand: boolean;
+    /** Ruta de ffmpeg; vacío = buscarlo automáticamente. */
+    ffmpegPath: string;
+  };
+  /** Comandos del chat, uno por línea: "redes = Sígueme en TikTok". */
+  commands: string[];
 }
 
 export interface Secrets {
@@ -72,6 +114,14 @@ export interface BrainInput {
   recentSaid: string[];
   game: string;
   minutesLive: number;
+  /** Captura del juego en JPEG (base64), si el personaje puede ver la partida. */
+  image?: string;
+}
+
+export interface ClipCopy {
+  title: string;
+  description: string;
+  hashtags: string[];
 }
 
 export interface Brain {

@@ -1,5 +1,5 @@
 // Ventana de escritorio de StreamBot: arranca el núcleo y muestra el panel de control.
-const { app, BrowserWindow, shell } = require("electron");
+const { app, BrowserWindow, globalShortcut, shell } = require("electron");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
@@ -25,9 +25,15 @@ async function createWindow() {
     return { action: "deny" };
   });
   await win.loadURL(`http://127.0.0.1:${port}/panel/`);
+
+  // Atajos globales: funcionan aunque la ventana no esté en primer plano.
+  globalShortcut.register("CommandOrControl+Shift+C", () => void core.clipNow("manual", "Atajo de teclado"));
+  globalShortcut.register("CommandOrControl+Shift+P", () => core.togglePause());
+  globalShortcut.register("CommandOrControl+Shift+S", () => core.skip());
 }
 
 app.whenReady().then(createWindow);
+app.on("will-quit", () => globalShortcut.unregisterAll());
 app.on("window-all-closed", async () => {
   if (core) await core.stop().catch(() => {});
   app.quit();

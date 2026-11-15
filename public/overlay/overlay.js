@@ -1,6 +1,7 @@
 // Overlay para OBS (fuente de navegador). Muestra el chat unificado y los subtítulos,
 // y reproduce la voz del personaje para que OBS la mezcle con el juego.
-// Parámetros: ?chat=0 oculta el chat, ?subs=0 oculta los subtítulos, ?audio=0 silencia.
+// Parámetros: ?chat=0 oculta el chat, ?subs=0 los subtítulos, ?alerts=0 las alertas,
+// ?brand=0 el logo, el marco y las redes, y ?audio=0 silencia.
 const params = new URLSearchParams(location.search);
 const showChat = params.get("chat") !== "0";
 const showSubs = params.get("subs") !== "0";
@@ -12,6 +13,12 @@ const replyEl = document.getElementById("reply");
 const nameEl = document.getElementById("name");
 const subtitleEl = document.getElementById("subtitle");
 const unlockEl = document.getElementById("unlock");
+const alertEl = document.getElementById("alert");
+const alertSound = document.getElementById("alert-sound");
+const tickerEl = document.getElementById("ticker");
+const toastEl = document.getElementById("toast");
+const showAlerts = params.get("alerts") !== "0";
+const showBrand = params.get("brand") !== "0";
 
 const MAX_CHAT = 8;
 const CHAT_TTL_MS = 30000;
@@ -41,6 +48,85 @@ function addChat(msg) {
   }, CHAT_TTL_MS);
 }
 
+// ---- Marca: color, logo, marco, avatar, redes ----
+let brand = null;
+let tickerTimer = null;
+
+function setImage(id, asset) {
+  const el = document.getElementById(id);
+  el.hidden = !asset || asset.kind !== "image";
+  if (!el.hidden && el.getAttribute("src") !== asset.url) el.src = asset.url;
+}
+
+function applyBrand(next) {
+  brand = next;
+  document.documentElement.style.setProperty("--gold", brand.accent);
+  nameEl.textContent = brand.name;
+  setImage("logo", showBrand ? brand.slots.logo : null);
+  setImage("frame", showBrand ? brand.slots.frame : null);
+  setImage("avatar", brand.slots.avatar);
+  setImage("alert-img", brand.slots.alert);
+  const sound = playAudio && brand.slots.alertSound ? brand.slots.alertSound.url : "";
+  if (alertSound.getAttribute("src") !== sound) {
+    if (sound) alertSound.src = sound;
+    else alertSound.removeAttribute("src");
+  }
+
+  clearInterval(tickerTimer);
+  const socials = showBrand && brand.ticker ? brand.socials : [];
+  tickerEl.hidden = socials.length === 0;
+  if (!socials.length) return;
+  let i = 0;
+  const show = () => {
+    const item = socials[i++ % socials.length];
+    const label = document.createElement("b");
+    label.textContent = item.name;
+    tickerEl.replaceChildren(label, item.value);
+    tickerEl.classList.remove("swap");
+  };
+  show();
+  if (socials.length > 1) {
+    tickerTimer = setInterval(() => {
+      tickerEl.classList.add("swap");
+      setTimeout(show, 500);
+    }, 8000);
+  }
+}
+
+// ---- Alertas de suscripciones, regalos, donaciones y seguidores ----
+const alertQueue = [];
+let alertBusy = false;
+
+function nextAlert() {
+  const msg = alertQueue.shift();
+  if (!msg) { alertBusy = false; return; }
+  alertBusy = true;
+  document.getElementById("alert-user").textContent = msg.user;
+  document.getElementById("alert-text").textContent = EVENT_TEXT[msg.kind] + (msg.detail ? ` · ${msg.detail}` : "");
+  alertEl.hidden = false;
+  if (alertSound.getAttribute("src")) {
+    alertSound.currentTime = 0;
+    alertSound.play().catch(() => {});
+  }
+  setTimeout(() => {
+    alertEl.hidden = true;
+    setTimeout(nextAlert, 400);
+  }, 5000);
+}
+
+function addAlert(msg) {
+  if (!showAlerts) return;
+  if (alertQueue.length < 20) alertQueue.push(msg);
+  if (!alertBusy) nextAlert();
+}
+
+function showToast(text) {
+  toastEl.textContent = text;
+  toastEl.hidden = false;
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => { toastEl.hidden = true; }, 3500);
+}
+
 function ensureAudio() {
   if (!playAudio) return null;
   if (!audioCtx) audioCtx = new AudioContext();
@@ -59,11 +145,11 @@ function startUtterance(msg) {
   stopUtterance();
   current = { id: msg.id, sampleRate: msg.sampleRate, nextTime: 0, sources: new Set(), ended: false, gotAudio: false, chars: 0, carry: null };
   if (showSubs) {
-    nameEl.textContent = msg.name || "";
     subtitleEl.textContent = "";
     const first = msg.replyTo && msg.replyTo[0];
     replyEl.textContent = first ? `↩ ${first.user}${first.text ? `: ${first.text}` : ""}` : "";
     voiceEl.hidden = false;
+    voiceEl.classList.add("speaking");
   }
   ensureAudio();
 }
@@ -131,6 +217,7 @@ function finish(utterance) {
   if (current !== utterance) return;
   if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "played", id: utterance.id }));
   current = null;
+  voiceEl.classList.remove("speaking");
   setTimeout(() => { if (!current) voiceEl.hidden = true; }, 900);
 }
 
@@ -141,6 +228,7 @@ function stopUtterance() {
     try { source.stop(); } catch { /* ya había terminado */ }
   }
   current = null;
+  voiceEl.classList.remove("speaking");
   voiceEl.hidden = true;
 }
 
@@ -151,6 +239,9 @@ function connect() {
     if (typeof event.data !== "string") return onAudio(event.data);
     const msg = JSON.parse(event.data);
     if (msg.type === "chat") addChat(msg.msg);
+    else if (msg.type === "brand") applyBrand(msg.brand);
+    else if (msg.type === "alert") addAlert(msg.msg);
+    else if (msg.type === "toast") showToast(msg.text);
     else if (msg.type === "utterance_start") startUtterance(msg);
     else if (msg.type === "subtitle") onSubtitle(msg);
     else if (msg.type === "utterance_end") endUtterance(msg);

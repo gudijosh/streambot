@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StreamBot Escena</title>
+<style>
+  :root { --gold: #e8b64c; --ink: #fff7e6; --panel: rgba(18, 14, 10, 0.78); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; color: var(--ink); font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif; }
+  body { background: radial-gradient(120% 90% at 20% 10%, #3a2a12 0%, #17120c 55%, #0b0907 100%); }
+  #bg, #bg-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent 55%); }
+  main { position: absolute; left: 6vw; bottom: 9vh; max-width: 60vw; }
+  #name { color: var(--gold); font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; font-size: clamp(16px, 1.6vw, 30px); }
+  h1 { margin: 0.15em 0 0; font-size: clamp(34px, 5.2vw, 100px); line-height: 1.05; text-wrap: balance; }
+  #count { font-variant-numeric: tabular-nums; font-size: clamp(28px, 3.6vw, 70px); font-weight: 700; color: var(--gold); margin-top: 0.2em; }
+  #socials { display: flex; flex-wrap: wrap; gap: 0.6em 1.6em; margin: 1.2em 0 0; padding: 0; list-style: none; font-size: clamp(14px, 1.3vw, 24px); }
+  #socials b { color: var(--gold); margin-right: 0.4em; }
+  #chat { position: absolute; right: 3vw; bottom: 9vh; width: min(26vw, 480px); margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.5vh; }
+  #chat li { background: var(--panel); border-left: 4px solid var(--gold); border-radius: 6px; padding: 0.5em 0.8em; font-size: clamp(13px, 1.05vw, 20px); overflow-wrap: anywhere; }
+  #chat .user { font-weight: 700; color: var(--gold); margin-right: 0.4em; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+  <img id="bg" alt="" hidden>
+  <video id="bg-video" muted loop autoplay playsinline hidden></video>
+  <div id="shade"></div>
+  <main>
+    <div id="name"></div>
+    <h1 id="title"></h1>
+    <div id="count" hidden></div>
+    <ul id="socials"></ul>
+  </main>
+  <ul id="chat"></ul>
+<script>
+// Escenas de inicio, pausa y despedida para OBS.
+// Parámetros: ?tipo=starting|brb|ending, ?min=5 (cuenta atrás), ?texto=..., ?chat=0, ?arte=solo (solo el arte, sin textos).
+const params = new URLSearchParams(location.search);
+const type = ["starting", "brb", "ending"].includes(params.get("tipo")) ? params.get("tipo") : "starting";
+const TITLES = { starting: "Empezamos en breve", brb: "Vuelvo enseguida", ending: "Gracias por venir" };
+const artOnly = params.get("arte") === "solo";
+const showChat = params.get("chat") !== "0" && !artOnly;
+
+document.getElementById("title").textContent = params.get("texto") || TITLES[type];
+document.querySelector("main").hidden = artOnly;
+document.getElementById("shade").hidden = artOnly;
+
+const minutes = Number(params.get("min"));
+if (minutes > 0 && !artOnly) {
+  const end = Date.now() + minutes * 60000;
+  const el = document.getElementById("count");
+  el.hidden = false;
+  const tick = () => {
+    const left = Math.max(0, Math.round((end - Date.now()) / 1000));
+    el.textContent = left > 0 ? `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}` : "¡Ya casi!";
+  };
+  tick();
+  setInterval(tick, 500);
+}
+
+function applyBrand(brand) {
+  document.documentElement.style.setProperty("--gold", brand.accent);
+  document.getElementById("name").textContent = brand.name;
+  const asset = brand.slots[type];
+  const img = document.getElementById("bg");
+  const video = document.getElementById("bg-video");
+  img.hidden = !asset || asset.kind !== "image";
+  video.hidden = !asset || asset.kind !== "video";
+  if (!img.hidden && img.getAttribute("src") !== asset.url) img.src = asset.url;
+  if (!video.hidden && video.getAttribute("src") !== asset.url) video.src = asset.url;
+  const list = document.getElementById("socials");
+  list.replaceChildren(...brand.socials.map((s) => {
+    const li = document.createElement("li");
+    const b = document.createElement("b");
+    b.textContent = s.name;
+    li.append(b, s.value);
+    return li;
+  }));
+}
+
+function addChat(msg) {
+  if (!showChat || msg.kind !== "chat") return;
+  const list = document.getElementById("chat");
+  const li = document.createElement("li");
+  const user = document.createElement("span");
+  user.className = "user";
+  user.textContent = msg.user;
+  li.append(user, msg.text);
+  list.append(li);
+  while (list.children.length > 7) list.firstElementChild.remove();
+}
+
+function connect() {
+  const ws = new WebSocket(`ws://${location.host}/ws?role=scene`);
+  ws.onmessage = (event) => {
+    if (typeof event.data !== "string") return;
+    const msg = JSON.parse(event.data);
+    if (msg.type === "brand") applyBrand(msg.brand);
+    else if (msg.type === "chat") addChat(msg.msg);
+  };
+  ws.onclose = () => setTimeout(connect, 1500);
+}
+connect();
+</script>
+</body>
+</html>

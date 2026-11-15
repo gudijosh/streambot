@@ -11,20 +11,34 @@ export const DEFAULT_SETTINGS: Settings = {
   tiktok: { enabled: false, username: "" },
   agent: {
     enabled: true,
+    engine: "claude",
     model: "claude-haiku-5-5",
+    localUrl: "http://127.0.0.1:11434/v1",
+    localModel: "qwen3.5:4b",
     minGapSeconds: 4,
     idleSeconds: 45,
     maxPerTurn: 3,
+    watchGame: false,
   },
   voice: {
+    engine: "elevenlabs",
     voiceId: "",
     modelId: "eleven_flash_v2_5",
     stability: 0.45,
     similarity: 0.8,
     speed: 1,
+    localUrl: "http://127.0.0.1:8000",
+    localModel: "mlx-community/Kokoro-82M-bf16",
+    localVoice: "em_alex",
+    localLang: "e",
+    localRefAudio: "",
+    localRefText: "",
   },
   obs: { enabled: false, url: "ws://127.0.0.1:4455" },
   filter: { bannedWords: [], blockLinks: true },
+  brand: { accent: "#e8b64c", ticker: true, socials: [] },
+  clips: { folder: "", autoOnSpike: true, chatCommand: true, ffmpegPath: "" },
+  commands: [],
 };
 
 const EMPTY_SECRETS: Secrets = {
@@ -66,8 +80,10 @@ export class ConfigStore {
   settings: Settings = structuredClone(DEFAULT_SETTINGS);
   private stored: Secrets = { ...EMPTY_SECRETS };
   private readonly file: string;
+  readonly dir: string;
 
   constructor(dir = configDir()) {
+    this.dir = dir;
     this.file = path.join(dir, "config.json");
     this.load();
   }

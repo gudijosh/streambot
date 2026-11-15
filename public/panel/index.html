@@ -9,97 +9,35 @@
 <body>
 <header>
   <h1>StreamBot</h1>
+  <nav role="tablist" aria-label="Secciones">
+    <button role="tab" data-tab="live" aria-selected="true">Directo</button>
+    <button role="tab" data-tab="clips" aria-selected="false">Clips</button>
+    <button role="tab" data-tab="brand" aria-selected="false">Marca</button>
+    <button role="tab" data-tab="settings" aria-selected="false">Ajustes</button>
+  </nav>
   <div id="pills" role="status"></div>
 </header>
 
-<main>
-  <section id="col-settings" aria-label="Ajustes">
-    <details open>
-      <summary>Plataformas</summary>
-      <form data-settings>
-        <fieldset>
-          <legend><label><input type="checkbox" name="twitch.enabled"> Twitch</label></legend>
-          <label>Canal <input name="twitch.channel" placeholder="tu_canal" autocomplete="off"></label>
-        </fieldset>
-        <fieldset>
-          <legend><label><input type="checkbox" name="youtube.enabled"> YouTube</label></legend>
-          <label>Enlace o ID del directo <input name="youtube.videoId" placeholder="https://youtube.com/live/…" autocomplete="off"></label>
-          <label>Consultar cada (s) <input type="number" name="youtube.pollSeconds" min="3" max="30"></label>
-          <p class="hint" id="quota"></p>
-        </fieldset>
-        <fieldset>
-          <legend><label><input type="checkbox" name="tiktok.enabled"> TikTok</label></legend>
-          <label>Usuario <input name="tiktok.username" placeholder="@tu_usuario" autocomplete="off"></label>
-          <p class="hint">Conexión no oficial: puede fallar si TikTok cambia algo.</p>
-        </fieldset>
-        <button type="submit">Guardar plataformas</button>
-      </form>
-    </details>
+<!-- ===== Directo ===== -->
+<main id="tab-live" class="cols3">
+  <section aria-label="Controles del directo">
+    <button type="button" id="clip-now" class="primary big">Guardar clip</button>
+    <p class="hint" id="clip-hint"></p>
 
-    <details>
-      <summary>Personaje y voz</summary>
-      <form data-settings>
-        <label>Nombre del personaje <input name="personaName" autocomplete="off"></label>
-        <label>Juego <input name="game" autocomplete="off"></label>
-        <label>Modelo
-          <select name="agent.model">
-            <option value="claude-haiku-5-5">Claude Haiku 5.5 (más rápido)</option>
-            <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (más ingenioso)</option>
-          </select>
-        </label>
-        <label>Pausa entre intervenciones (s) <input type="number" name="agent.minGapSeconds" min="0" max="120"></label>
-        <label>Hablar solo tras silencio de (s, 0 = nunca) <input type="number" name="agent.idleSeconds" min="0" max="600"></label>
-        <label>Mensajes por intervención <input type="number" name="agent.maxPerTurn" min="1" max="5"></label>
-        <label>ID de voz de ElevenLabs <input name="voice.voiceId" autocomplete="off"></label>
-        <label>Modelo de voz
-          <select name="voice.modelId">
-            <option value="eleven_flash_v2_5">Flash v2.5 (menor latencia)</option>
-            <option value="eleven_turbo_v2_5">Turbo v2.5</option>
-            <option value="eleven_multilingual_v2">Multilingual v2 (más calidad)</option>
-          </select>
-        </label>
-        <label>Velocidad de la voz <input type="number" name="voice.speed" min="0.7" max="1.2" step="0.05"></label>
-        <button type="submit">Guardar personaje</button>
-      </form>
-    </details>
+    <h3>OBS</h3>
+    <div class="row">
+      <button type="button" data-toggle="stream" aria-pressed="false">Emitir</button>
+      <button type="button" data-toggle="record" aria-pressed="false">Grabar</button>
+      <button type="button" data-toggle="replay" aria-pressed="false">Búfer de repetición</button>
+    </div>
+    <p class="hint" id="obs-live-hint"></p>
+    <h3>Escenas</h3>
+    <div class="row" id="scenes"></div>
 
-    <details>
-      <summary>Filtro del chat</summary>
-      <form data-settings>
-        <label><input type="checkbox" name="filter.blockLinks"> Ignorar mensajes con enlaces</label>
-        <label>Palabras vetadas (una por línea) <textarea name="filter.bannedWords" rows="4"></textarea></label>
-        <button type="submit">Guardar filtro</button>
-      </form>
-    </details>
-
-    <details>
-      <summary>Claves</summary>
-      <form id="secrets">
-        <p class="hint">Se guardan solo en este ordenador. Deja un campo vacío para no cambiarlo.</p>
-        <label>Anthropic <span class="flag" data-flag="anthropicApiKey"></span><input type="password" name="anthropicApiKey" autocomplete="off"></label>
-        <label>ElevenLabs <span class="flag" data-flag="elevenLabsApiKey"></span><input type="password" name="elevenLabsApiKey" autocomplete="off"></label>
-        <label>YouTube Data API <span class="flag" data-flag="youtubeApiKey"></span><input type="password" name="youtubeApiKey" autocomplete="off"></label>
-        <label>Contraseña de OBS WebSocket <span class="flag" data-flag="obsPassword"></span><input type="password" name="obsPassword" autocomplete="off"></label>
-        <button type="submit">Guardar claves</button>
-      </form>
-    </details>
-
-    <details>
-      <summary>OBS</summary>
-      <form data-settings>
-        <label>Dirección de OBS WebSocket <input name="obs.url" autocomplete="off"></label>
-        <button type="submit">Guardar</button>
-      </form>
-      <div class="row">
-        <button type="button" data-obs="connect">Conectar con OBS</button>
-        <button type="button" data-obs="start" class="primary">Empezar emisión</button>
-        <button type="button" data-obs="stop" class="danger">Parar emisión</button>
-      </div>
-      <p class="hint" id="obs-detail"></p>
-      <label>Dirección del overlay (fuente de navegador en OBS)
-        <input id="overlay-url" readonly>
-      </label>
-    </details>
+    <h3>Este directo</h3>
+    <dl id="stats"></dl>
+    <h3>Más activos</h3>
+    <ol id="top"></ol>
   </section>
 
   <section id="col-chat" aria-label="Chat unificado">
@@ -108,7 +46,7 @@
       <label class="switch"><input type="checkbox" id="sim"> Chat simulado</label>
     </div>
     <ol id="chat" aria-live="off"></ol>
-    <p class="empty" id="chat-empty">Aún no hay mensajes. Activa una plataforma o el chat simulado.</p>
+    <p class="empty" id="chat-empty">Aún no hay mensajes. Activa una plataforma en Ajustes o el chat simulado.</p>
   </section>
 
   <section id="col-agent" aria-label="Co-host IA">
@@ -120,6 +58,7 @@
       </div>
     </div>
     <p id="agent-status" role="status"></p>
+    <p id="now-saying" hidden></p>
     <form id="say">
       <label for="say-text">Que el personaje diga</label>
       <div class="row">
@@ -132,6 +71,238 @@
     <p class="empty" id="log-empty">Aquí aparecerá cada intervención y su latencia.</p>
   </section>
 </main>
+
+<!-- ===== Clips ===== -->
+<main id="tab-clips" class="cols2" hidden>
+  <section aria-label="Biblioteca">
+    <h3>Momentos de este directo</h3>
+    <ol id="markers" class="list"></ol>
+    <p class="empty" id="markers-empty">Pulsa «Guardar clip», deja que el chat escriba !clip o espera a que el chat se dispare.</p>
+
+    <h3>Vídeos</h3>
+    <ol id="clips" class="list"></ol>
+    <p class="empty" id="clips-empty">Aquí aparecen los clips guardados, las grabaciones de OBS y lo que exportes.</p>
+    <form id="import" class="row">
+      <input name="path" placeholder="Ruta de un vídeo, p. ej. ~/Movies/partida.mp4" autocomplete="off" aria-label="Ruta de un vídeo">
+      <button type="submit">Añadir</button>
+    </form>
+  </section>
+
+  <section id="editor" aria-label="Editor de clips">
+    <p class="empty" id="editor-empty">Elige un vídeo de la lista para recortarlo.</p>
+    <div id="editor-body" hidden>
+      <div class="bar">
+        <h2 id="editor-name"></h2>
+        <div class="row">
+          <button type="button" id="reveal">Mostrar en Finder</button>
+          <button type="button" id="remove-clip" class="danger">Quitar de la lista</button>
+        </div>
+      </div>
+      <video id="player" controls preload="metadata"></video>
+      <p class="hint" id="player-hint" hidden>Este formato no se puede previsualizar aquí, pero sí exportar. Para verlo en el panel, graba en MP4 en OBS.</p>
+
+      <div class="trim">
+        <label>Inicio (s) <input type="number" id="in" min="0" step="0.1" value="0"></label>
+        <button type="button" id="set-in">Inicio aquí</button>
+        <label>Fin (s) <input type="number" id="out" min="0" step="0.1" value="0"></label>
+        <button type="button" id="set-out">Fin aquí</button>
+        <button type="button" id="preview">Ver recorte</button>
+        <span id="length" class="hint"></span>
+      </div>
+
+      <div class="trim">
+        <label>Formato
+          <select id="format">
+            <option value="vertical-blur">Vertical 9:16 con fondo difuminado</option>
+            <option value="vertical-crop">Vertical 9:16 recortado</option>
+            <option value="horizontal">Horizontal 16:9</option>
+          </select>
+        </label>
+        <label id="crop-wrap" hidden>Encuadre <input type="range" id="crop" min="0" max="100" value="50"></label>
+        <label class="check"><input type="checkbox" id="watermark"> Marca de agua con mi logo</label>
+        <button type="button" id="export" class="primary">Exportar clip</button>
+        <button type="button" id="cancel-export" hidden>Cancelar</button>
+      </div>
+      <progress id="progress" max="1" value="0" hidden></progress>
+      <p class="hint" id="export-status"></p>
+
+      <h3>Texto para publicar</h3>
+      <label>De qué va el clip <textarea id="note" rows="2" placeholder="Opcional: cuéntale a la IA qué pasa en el clip"></textarea></label>
+      <button type="button" id="make-copy">Generar título y hashtags</button>
+      <div id="copy" hidden>
+        <label>Título <span class="row"><input id="copy-title" readonly><button type="button" data-copy="copy-title">Copiar</button></span></label>
+        <label>Descripción <span class="row"><textarea id="copy-desc" rows="2" readonly></textarea><button type="button" data-copy="copy-desc">Copiar</button></span></label>
+        <label>Hashtags <span class="row"><input id="copy-tags" readonly><button type="button" data-copy="copy-tags">Copiar</button></span></label>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ===== Marca ===== -->
+<main id="tab-brand" class="cols2" hidden>
+  <section aria-label="Identidad">
+    <form data-settings>
+      <h3>Identidad</h3>
+      <label>Nombre del personaje <input name="personaName" autocomplete="off"></label>
+      <label>Color principal <input type="color" name="brand.accent"></label>
+      <label class="check"><input type="checkbox" name="brand.ticker"> Mostrar mis redes en el directo</label>
+      <label>Redes sociales (una por línea: Red = @usuario)
+        <textarea name="brand.socials" rows="4" placeholder="TikTok = @tu_usuario&#10;YouTube = @tu_canal"></textarea>
+      </label>
+      <button type="submit">Guardar identidad</button>
+    </form>
+
+    <h3>Fuentes de navegador para OBS</h3>
+    <p class="hint">Añade cada dirección en OBS como fuente de navegador a 1920 × 1080.</p>
+    <dl id="urls"></dl>
+  </section>
+
+  <section aria-label="Artes">
+    <h3>Artes</h3>
+    <p class="hint">Sube tus diseños a cada hueco y se aplican al momento en el directo.</p>
+    <div id="slots"></div>
+  </section>
+</main>
+
+<!-- ===== Ajustes ===== -->
+<main id="tab-settings" class="grid" hidden>
+  <details open>
+    <summary>Plataformas</summary>
+    <form data-settings>
+      <fieldset>
+        <legend><label><input type="checkbox" name="twitch.enabled"> Twitch</label></legend>
+        <label>Canal <input name="twitch.channel" placeholder="tu_canal" autocomplete="off"></label>
+      </fieldset>
+      <fieldset>
+        <legend><label><input type="checkbox" name="youtube.enabled"> YouTube</label></legend>
+        <label>Enlace o ID del directo <input name="youtube.videoId" placeholder="https://youtube.com/live/…" autocomplete="off"></label>
+        <label>Consultar cada (s) <input type="number" name="youtube.pollSeconds" min="3" max="30"></label>
+        <p class="hint" id="quota"></p>
+      </fieldset>
+      <fieldset>
+        <legend><label><input type="checkbox" name="tiktok.enabled"> TikTok</label></legend>
+        <label>Usuario <input name="tiktok.username" placeholder="@tu_usuario" autocomplete="off"></label>
+        <p class="hint">Conexión no oficial: puede fallar si TikTok cambia algo.</p>
+      </fieldset>
+      <button type="submit">Guardar plataformas</button>
+    </form>
+  </details>
+
+  <details open>
+    <summary>Co-host y voz</summary>
+    <form data-settings>
+      <label>Juego <input name="game" autocomplete="off"></label>
+      <label>Pausa entre intervenciones (s) <input type="number" name="agent.minGapSeconds" min="0" max="120"></label>
+      <label>Hablar solo tras silencio de (s, 0 = nunca) <input type="number" name="agent.idleSeconds" min="0" max="600"></label>
+      <label>Mensajes por intervención <input type="number" name="agent.maxPerTurn" min="1" max="5"></label>
+      <label class="check"><input type="checkbox" name="agent.watchGame"> Comentar lo que pasa en el juego (necesita OBS y cerebro en la nube)</label>
+
+      <fieldset>
+        <legend>Cerebro</legend>
+        <label>Dónde se ejecuta
+          <select name="agent.engine" data-engine-for="brain">
+            <option value="claude">En la nube (Claude)</option>
+            <option value="local">En este Mac (modelo local)</option>
+          </select>
+        </label>
+        <div data-engine="brain:claude">
+          <label>Modelo
+            <select name="agent.model">
+              <option value="claude-haiku-5-5">Claude Haiku 5.5 (más rápido)</option>
+              <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (más ingenioso)</option>
+            </select>
+          </label>
+        </div>
+        <div data-engine="brain:local">
+          <label>Servidor <input name="agent.localUrl" autocomplete="off"></label>
+          <label>Modelo (como aparece en «ollama list») <input name="agent.localModel" autocomplete="off"></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Voz</legend>
+        <label>Dónde se genera
+          <select name="voice.engine" data-engine-for="voice">
+            <option value="elevenlabs">En la nube (ElevenLabs)</option>
+            <option value="local">En este Mac (modelo local)</option>
+          </select>
+        </label>
+        <div data-engine="voice:elevenlabs">
+          <label>ID de voz de ElevenLabs <input name="voice.voiceId" autocomplete="off"></label>
+          <label>Modelo de voz
+            <select name="voice.modelId">
+              <option value="eleven_flash_v2_5">Flash v2.5 (menor latencia)</option>
+              <option value="eleven_turbo_v2_5">Turbo v2.5</option>
+              <option value="eleven_multilingual_v2">Multilingual v2 (más calidad)</option>
+            </select>
+          </label>
+        </div>
+        <div data-engine="voice:local">
+          <label>Servidor <input name="voice.localUrl" autocomplete="off"></label>
+          <label>Modelo <input name="voice.localModel" autocomplete="off"></label>
+          <label>Voz predefinida <input name="voice.localVoice" autocomplete="off" placeholder="em_alex"></label>
+          <label>Código de idioma <input name="voice.localLang" autocomplete="off" placeholder="e"></label>
+          <label>Audio de referencia para clonar (ruta, opcional) <input name="voice.localRefAudio" autocomplete="off" placeholder="/Users/tú/voz-personaje.wav"></label>
+          <label>Texto que se dice en ese audio (opcional) <input name="voice.localRefText" autocomplete="off"></label>
+          <p class="hint">Instalación y modelos recomendados en docs/voz-local.md. Usa solo tu voz o una creada por ti.</p>
+        </div>
+        <label>Velocidad de la voz <input type="number" name="voice.speed" min="0.7" max="1.2" step="0.05"></label>
+      </fieldset>
+      <button type="submit">Guardar co-host</button>
+    </form>
+  </details>
+
+  <details open>
+    <summary>Chat: filtro y comandos</summary>
+    <form data-settings>
+      <label class="check"><input type="checkbox" name="filter.blockLinks"> Ignorar mensajes con enlaces</label>
+      <label>Palabras vetadas (una por línea) <textarea name="filter.bannedWords" rows="3"></textarea></label>
+      <label>Comandos (uno por línea: comando = lo que dice el personaje)
+        <textarea name="commands" rows="4" placeholder="redes = Síganme en TikTok y YouTube, parceros."></textarea>
+      </label>
+      <p class="hint">Cuando alguien escribe !redes en el chat, el personaje lo dice. Cada comando descansa 30 s.</p>
+      <button type="submit">Guardar chat</button>
+    </form>
+  </details>
+
+  <details open>
+    <summary>Clips</summary>
+    <form data-settings>
+      <label class="check"><input type="checkbox" name="clips.autoOnSpike"> Guardar clip solo cuando el chat se dispara</label>
+      <label class="check"><input type="checkbox" name="clips.chatCommand"> Permitir !clip en el chat</label>
+      <label>Carpeta de exportación <input name="clips.folder" autocomplete="off" id="clips-folder"></label>
+      <label>Ruta de ffmpeg (vacío = automático) <input name="clips.ffmpegPath" autocomplete="off"></label>
+      <p class="hint" id="ffmpeg-status"></p>
+      <button type="submit">Guardar clips</button>
+    </form>
+  </details>
+
+  <details open>
+    <summary>OBS</summary>
+    <form data-settings>
+      <label class="check"><input type="checkbox" name="obs.enabled"> Conectar con OBS automáticamente</label>
+      <label>Dirección de OBS WebSocket <input name="obs.url" autocomplete="off"></label>
+      <button type="submit">Guardar OBS</button>
+    </form>
+    <div class="row">
+      <button type="button" id="obs-connect">Conectar ahora</button>
+    </div>
+    <p class="hint" id="obs-detail"></p>
+  </details>
+
+  <details open>
+    <summary>Claves</summary>
+    <form id="secrets">
+      <p class="hint">Se guardan solo en este ordenador. Deja un campo vacío para no cambiarlo.</p>
+      <label>Anthropic <span class="flag" data-flag="anthropicApiKey"></span><input type="password" name="anthropicApiKey" autocomplete="off"></label>
+      <label>ElevenLabs <span class="flag" data-flag="elevenLabsApiKey"></span><input type="password" name="elevenLabsApiKey" autocomplete="off"></label>
+      <label>YouTube Data API <span class="flag" data-flag="youtubeApiKey"></span><input type="password" name="youtubeApiKey" autocomplete="off"></label>
+      <label>Contraseña de OBS WebSocket <span class="flag" data-flag="obsPassword"></span><input type="password" name="obsPassword" autocomplete="off"></label>
+      <button type="submit">Guardar claves</button>
+    </form>
+  </details>
+</main>
+
 <div id="toast" role="alert" hidden></div>
 <script src="panel.js"></script>
 </body>

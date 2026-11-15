@@ -27,11 +27,30 @@ Variantes del overlay, por si quieres colocar cada parte por separado:
 
 | Dirección | Muestra |
 |---|---|
-| `/overlay/` | Chat, subtítulos y voz |
-| `/overlay/?chat=0` | Solo subtítulos y voz |
-| `/overlay/?subs=0&audio=0` | Solo chat |
+| `/overlay/` | Chat, subtítulos, voz, alertas, logo, marco y redes |
+| `/overlay/?chat=0` | Todo menos el chat |
+| `/overlay/?subs=0&audio=0&alerts=0&brand=0` | Solo chat |
 
 Usa una sola fuente con audio; si pones dos, la voz sonará doble.
+
+### Pantallas de inicio, pausa y despedida
+
+Crea en OBS una escena para cada una con una fuente de navegador a 1920 × 1080:
+
+| Escena | Dirección |
+|---|---|
+| Empezamos pronto | `/overlay/scene.html?tipo=starting&min=5` |
+| Vuelvo enseguida | `/overlay/scene.html?tipo=brb` |
+| Fin del directo | `/overlay/scene.html?tipo=ending` |
+
+Usan el fondo que subas en la pestaña Marca. Opciones: `min=5` pone una cuenta atrás, `texto=...` cambia el título, `chat=0` quita el chat y `arte=solo` muestra solo tu diseño, sin textos encima. Las direcciones completas se copian desde Marca → Fuentes de navegador para OBS.
+
+### Clips
+
+1. En OBS: Ajustes → Salida → Búfer de repetición → activar, con 30 a 60 segundos.
+2. Ajustes → Salida → Grabación → formato MP4 (o MP4 híbrido), para poder ver los vídeos en el editor de StreamBot.
+3. En StreamBot, enciende **Búfer de repetición** en la pestaña Directo al empezar. Desde entonces, **Guardar clip**, `!clip` en el chat y los picos del chat guardan los últimos segundos.
+4. Instala ffmpeg para exportar: `brew install ffmpeg`.
 
 ## 3. Emitir a varias plataformas
 
@@ -46,9 +65,9 @@ Claves de emisión:
 - **YouTube**: YouTube Studio → Emitir en directo → Emisión.
 - **TikTok**: LIVE Center → Go Live, si tu cuenta tiene acceso a servidor y clave. Cambia en cada directo.
 
-## 4. Control de OBS desde StreamBot (opcional)
+## 4. Control de OBS desde StreamBot
 
-En OBS: Herramientas → Ajustes del servidor WebSocket → activar y copiar la contraseña. En StreamBot: Claves → Contraseña de OBS WebSocket, y luego OBS → Conectar con OBS. Podrás empezar y parar la emisión desde el panel.
+En OBS: Herramientas → Ajustes del servidor WebSocket → activar y copiar la contraseña. En StreamBot: Ajustes → Claves → Contraseña de OBS WebSocket, y en Ajustes → OBS marca «Conectar con OBS automáticamente». Desde la pestaña Directo podrás emitir, grabar, cambiar de escena y guardar clips.
 
 ## 5. Claves
 
@@ -62,12 +81,12 @@ Twitch y TikTok no necesitan clave para leer el chat.
 
 ## 6. La voz
 
-En ElevenLabs, crea la voz del personaje con Voice Design (por ejemplo: hombre colombiano de unos 45 años, acento paisa, voz grave, ritmo pausado y seguro). Guarda la que te guste y copia su ID en StreamBot → Personaje y voz. No uses la voz de una persona real: lo prohíben ElevenLabs y las normas de Rockstar.
+En ElevenLabs, crea la voz del personaje con Voice Design (por ejemplo: hombre colombiano de unos 45 años, acento paisa, voz grave, ritmo pausado y seguro). Guarda la que te guste y copia su ID en StreamBot → Ajustes → Co-host y voz. No uses la voz de una persona real: lo prohíben ElevenLabs y las normas de Rockstar.
 
 ## 7. Antes de cada directo
 
 1. Abre StreamBot y OBS.
-2. Comprueba en el panel que el overlay aparece como conectado.
+2. Comprueba en el panel que el overlay y OBS aparecen como conectados, y enciende el búfer de repetición.
 3. YouTube: pega el enlace del directo de hoy y guarda.
 4. Activa el chat simulado un momento para oír la voz y ajustar el volumen en OBS; luego desactívalo.
 5. Empieza la emisión.
