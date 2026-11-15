@@ -5,7 +5,7 @@ import { toSentences } from "./sentences.js";
 
 export interface LogEntry {
   ts: number;
-  mode: "reply" | "summary" | "idle" | "manual";
+  mode: "reply" | "summary" | "idle" | "narrate" | "manual";
   text: string;
   replyTo: { platform: string; user: string }[];
   /** Milisegundos desde que se eligieron los mensajes hasta el primer audio (o primer texto si no hay voz). */
@@ -32,15 +32,22 @@ export interface AgentDeps {
   voice(): Voice;
   output: AgentOutput;
   /** Captura del juego en JPEG base64, o null si no hay. */
-  screenshot?: () => Promise<string | null>;
+  screenshot?: (width?: number) => Promise<string | null>;
+  /** Si el cerebro actual puede ver imágenes (el modelo local no). */
+  canSee?: () => boolean;
   now?: () => number;
 }
 
 type Job =
   | { mode: "manual"; text: string }
-  | { mode: "reply" | "summary" | "idle"; messages: ChatMessage[] };
+  | { mode: "reply" | "summary" | "idle"; messages: ChatMessage[] }
+  | { mode: "narrate"; messages: ChatMessage[]; image: string };
 
 const MS_PER_CHAR_SILENT = 65;
+/** Ancho de la captura para narrar: algo más grande que para comentar en directo. */
+const NARRATE_SHOT_WIDTH = 1024;
+/** Respuesta con la que el modelo indica que no hay nada que narrar (menús, cargas). */
+const SILENCE = /^\W*silencio\W*$/i;
 
 /** Decide cuándo habla el personaje y coordina texto, voz y overlay. */
 export class Agent {
@@ -54,6 +61,8 @@ export class Agent {
   private timer: NodeJS.Timeout | null = null;
   private current: AbortController | null = null;
   private nextAllowed = 0;
+  /** Mientras se pide la captura para narrar, para no lanzar dos a la vez. */
+  private preparing = false;
   private lastActivity: number;
   private readonly startedAt: number;
   private seq = 0;
@@ -100,7 +109,7 @@ export class Agent {
   }
 
   async tick(): Promise<void> {
-    if (this.speaking) return;
+    if (this.speaking || this.preparing) return;
     const now = this.now();
     const settings = this.deps.settings();
 
@@ -110,12 +119,40 @@ export class Agent {
     if (this.paused || !settings.agent.enabled || now < this.nextAllowed) return;
     if (!this.deps.brain()) return;
 
+    if (settings.session.mode === "solo") return this.narrate(now, settings);
+
     const selection = this.selector.pick(now, settings.agent.maxPerTurn);
     if (selection) return this.run(selection);
 
     if (settings.agent.idleSeconds > 0 && now - this.lastActivity > settings.agent.idleSeconds * 1000) {
       return this.run({ mode: "idle", messages: [] });
     }
+  }
+
+  /** Jugando sin directo: cada pocos segundos mira la partida y la comenta. */
+  private async narrate(now: number, settings: Settings): Promise<void> {
+    const every = Math.max(2, settings.solo.narrateEverySeconds) * 1000;
+    if (now - this.lastActivity < every) return;
+    const warn = (problem: string) => {
+      this.lastActivity = this.now();
+      if (this.problem !== problem) {
+        this.problem = problem;
+        this.deps.output.status();
+      }
+    };
+    if (this.deps.canSee && !this.deps.canSee()) {
+      return warn("Para narrar la partida hace falta el cerebro en la nube (Claude): el modelo local no ve imágenes.");
+    }
+    this.preparing = true;
+    let image: string | null = null;
+    try {
+      image = this.deps.screenshot ? await this.deps.screenshot(NARRATE_SHOT_WIDTH).catch(() => null) : null;
+    } finally {
+      this.preparing = false;
+    }
+    if (!image) return warn("Para narrar la partida, conecta OBS: el personaje necesita ver lo que pasa en pantalla.");
+    if (this.paused || this.speaking) return;
+    return this.run({ mode: "narrate", messages: [], image });
   }
 
   private async run(job: Job): Promise<void> {
@@ -130,7 +167,14 @@ export class Agent {
     this.speaking = true;
     this.current = abort;
     output.status();
-    output.utteranceStart({ id, replyTo, sampleRate: voice.sampleRate });
+    // El bocadillo del overlay aparece con la primera frase, no antes: si el modelo
+    // decide callarse, en el vídeo no queda nada.
+    let shown = false;
+    const show = () => {
+      if (shown) return;
+      shown = true;
+      output.utteranceStart({ id, replyTo, sampleRate: voice.sampleRate });
+    };
 
     let text = "";
     let firstTextAt: number | null = null;
@@ -142,6 +186,8 @@ export class Agent {
     const sentences = async function* (self: Agent) {
       for await (const sentence of toSentences(source)) {
         if (abort.signal.aborted) return;
+        if (SILENCE.test(sentence)) continue;
+        show();
         firstTextAt ??= self.now();
         text += (text ? " " : "") + sentence;
         output.subtitle(id, sentence);
@@ -183,7 +229,9 @@ export class Agent {
       }
     }
 
-    if (abort.signal.aborted) {
+    if (!shown) {
+      // No dijo nada: no hay nada que cerrar en el overlay.
+    } else if (abort.signal.aborted) {
       output.stop(id);
     } else {
       output.utteranceEnd(id);
@@ -226,7 +274,7 @@ export class Agent {
     settings: Settings,
     signal: AbortSignal,
   ): AsyncIterable<string> {
-    let image: string | undefined;
+    let image: string | undefined = job.mode === "narrate" ? job.image : undefined;
     if (job.mode === "idle" && settings.agent.watchGame && this.deps.screenshot) {
       image = (await this.deps.screenshot().catch(() => null)) ?? undefined;
     }

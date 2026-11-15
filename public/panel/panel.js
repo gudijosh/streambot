@@ -6,7 +6,7 @@ const MAX_ROWS = 200;
 const PLATFORM_NAMES = { twitch: "Twitch", youtube: "YouTube", tiktok: "TikTok", sim: "Simulado" };
 const STATE_TEXT = { off: "apagado", connecting: "conectando", connected: "conectado", error: "error" };
 const KIND_TEXT = { sub: "suscripción", gift: "regalo", follow: "nuevo seguidor", donation: "donación" };
-const MODE_TEXT = { reply: "respuesta", summary: "resumen del chat", idle: "por su cuenta", manual: "manual" };
+const MODE_TEXT = { reply: "respuesta", summary: "resumen del chat", idle: "por su cuenta", narrate: "narrando la partida", manual: "manual" };
 const CLIP_KIND = { replay: "Clip", recording: "Grabación", export: "Exportado", import: "Añadido" };
 const MARKER_TEXT = { manual: "A mano", chat: "Desde el chat", spike: "Chat disparado" };
 
@@ -167,14 +167,23 @@ function renderPills() {
 
 function renderLive() {
   const { agent: a, obs } = state;
+  const solo = state.settings.session.mode === "solo";
+  for (const button of document.querySelectorAll("[data-mode]")) {
+    button.setAttribute("aria-checked", String(button.dataset.mode === state.settings.session.mode));
+  }
+  $("#mode-hint").textContent = solo
+    ? `Sin directo ni chat: el personaje mira la partida y la narra tras ${state.settings.solo.narrateEverySeconds} s de silencio. Su voz queda grabada en OBS con el juego.`
+    : "Responde al chat del directo.";
+  $("#col-chat").classList.toggle("solo-mode", solo);
 
   const status = $("#agent-status");
   let text;
   let cls = "";
   if (a.problem) { text = a.problem; cls = "bad"; }
   else if (a.brain === "none") { text = "Falta la clave de Anthropic (Ajustes → Claves) o elegir un modelo local. Hasta entonces el personaje solo dice lo que escribas."; cls = "bad"; }
-  else if (!state.settings.agent.enabled || a.paused) text = "En pausa: el personaje no responde al chat.";
+  else if (!state.settings.agent.enabled || a.paused) text = solo ? "En pausa: el personaje no narra." : "En pausa: el personaje no responde al chat.";
   else if (a.speaking) { text = "Hablando…"; cls = "live"; }
+  else if (solo) { text = "Mirando la partida para narrarla"; cls = "live"; }
   else { text = `Escuchando el chat · ${a.pending} en espera`; cls = "live"; }
   if (a.brain === "demo") text += " (respuestas de ejemplo)";
   if (a.brain === "local") text += " · Cerebro local";
@@ -255,6 +264,7 @@ function renderClips() {
   }
   const exporting = clips.exporting !== null;
   $("#export").disabled = exporting || !clips.ffmpeg;
+  $("#narrate").disabled = exporting || !clips.ffmpeg;
   $("#cancel-export").hidden = !exporting;
   if (!exporting) $("#progress").hidden = true;
   if (!clips.ffmpeg) $("#export-status").textContent = 'Para exportar hace falta ffmpeg. En el Mac: abre Terminal y ejecuta "brew install ffmpeg".';
@@ -419,11 +429,15 @@ function onExport(msg) {
   if (msg.state === "running") {
     progress.hidden = false;
     progress.value = msg.progress;
-    status.textContent = `Exportando… ${Math.round(msg.progress * 100)} %`;
+    const verb = msg.kind === "narrate" ? msg.stage || "Narrando" : "Exportando";
+    status.textContent = `${verb}… ${Math.round(msg.progress * 100)} %`;
   } else if (msg.state === "done") {
     progress.hidden = true;
-    status.textContent = `Clip exportado en ${msg.file}`;
-    toast("Clip exportado.");
+    const what = msg.kind === "narrate" ? "Clip narrado" : "Clip exportado";
+    status.textContent = `${what} en ${msg.file}`;
+    toast(`${what}.`);
+    // Se abre el resultado en el editor para revisarlo.
+    if (msg.kind === "narrate" && msg.newId) setTimeout(() => selectClip(msg.newId), 300);
   } else {
     progress.hidden = true;
     status.textContent = msg.error;
@@ -514,6 +528,22 @@ $("#export").addEventListener("click", () => {
   }));
 });
 $("#cancel-export").addEventListener("click", () => act(api("clips/cancel")));
+$("#narrate").addEventListener("click", () => {
+  if (!selectedClip) return;
+  act(api("clips/narrate", {
+    id: selectedClip,
+    start: Number($("#in").value),
+    end: Number($("#out").value),
+    note: $("#note").value,
+    subtitles: $("#narrate-subs").checked,
+  }));
+});
+for (const button of document.querySelectorAll("[data-mode]")) {
+  button.addEventListener("click", () => {
+    if (button.getAttribute("aria-checked") === "true") return;
+    act(api("settings", { session: { mode: button.dataset.mode } }), button.dataset.mode === "solo" ? "Modo Jugar solo." : "Modo Directo.");
+  });
+}
 $("#reveal").addEventListener("click", () => act(api("clips/reveal", { id: selectedClip }), (data) => (data.file ? `Está en ${data.file}` : "")));
 $("#remove-clip").addEventListener("click", () => {
   if (!confirm("¿Quitar este vídeo de la lista? El archivo no se borra del disco.")) return;

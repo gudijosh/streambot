@@ -39,6 +39,8 @@ export const DEFAULT_SETTINGS: Settings = {
   brand: { accent: "#e8b64c", ticker: true, socials: [] },
   clips: { folder: "", autoOnSpike: true, chatCommand: true, ffmpegPath: "" },
   commands: [],
+  session: { mode: "stream" },
+  solo: { narrateEverySeconds: 10 },
 };
 
 const EMPTY_SECRETS: Secrets = {

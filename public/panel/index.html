@@ -21,6 +21,11 @@
 <!-- ===== Directo ===== -->
 <main id="tab-live" class="cols3">
   <section aria-label="Controles del directo">
+    <div class="segmented" role="radiogroup" aria-label="Modo">
+      <button type="button" role="radio" data-mode="stream" aria-checked="true">Directo</button>
+      <button type="button" role="radio" data-mode="solo" aria-checked="false">Jugar solo</button>
+    </div>
+    <p class="hint" id="mode-hint"></p>
     <button type="button" id="clip-now" class="primary big">Guardar clip</button>
     <p class="hint" id="clip-hint"></p>
 
@@ -126,6 +131,13 @@
       <progress id="progress" max="1" value="0" hidden></progress>
       <p class="hint" id="export-status"></p>
 
+      <h3>Narrar con el personaje</h3>
+      <p class="hint">La IA mira el tramo marcado, escribe la narración y la pone con la voz del personaje sobre el juego. Crea un vídeo nuevo; el original no se toca. Hasta 3 minutos.</p>
+      <div class="trim">
+        <label class="check"><input type="checkbox" id="narrate-subs" checked> Subtítulos en el vídeo</label>
+        <button type="button" id="narrate" class="primary">Narrar tramo</button>
+      </div>
+
       <h3>Texto para publicar</h3>
       <label>De qué va el clip <textarea id="note" rows="2" placeholder="Opcional: cuéntale a la IA qué pasa en el clip"></textarea></label>
       <button type="button" id="make-copy">Generar título y hashtags</button>
@@ -195,6 +207,7 @@
       <label>Pausa entre intervenciones (s) <input type="number" name="agent.minGapSeconds" min="0" max="120"></label>
       <label>Hablar solo tras silencio de (s, 0 = nunca) <input type="number" name="agent.idleSeconds" min="0" max="600"></label>
       <label>Mensajes por intervención <input type="number" name="agent.maxPerTurn" min="1" max="5"></label>
+      <label>Jugando solo, narrar tras un silencio de (s) <input type="number" name="solo.narrateEverySeconds" min="2" max="120"></label>
       <label class="check"><input type="checkbox" name="agent.watchGame"> Comentar lo que pasa en el juego (necesita OBS y cerebro en la nube)</label>
 
       <fieldset>

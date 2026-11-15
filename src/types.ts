@@ -98,6 +98,14 @@ export interface Settings {
   };
   /** Comandos del chat, uno por línea: "redes = Sígueme en TikTok". */
   commands: string[];
+  session: {
+    /** "stream": responde al chat del directo. "solo": narra la partida sin directo. */
+    mode: string;
+  };
+  solo: {
+    /** Segundos de silencio entre una narración y la siguiente. */
+    narrateEverySeconds: number;
+  };
 }
 
 export interface Secrets {
@@ -109,7 +117,8 @@ export interface Secrets {
 
 /** Entrada para generar una intervención del personaje. */
 export interface BrainInput {
-  mode: "reply" | "summary" | "idle";
+  /** "narrate": jugando sin directo, comenta la captura de la partida. */
+  mode: "reply" | "summary" | "idle" | "narrate";
   messages: ChatMessage[];
   recentSaid: string[];
   game: string;

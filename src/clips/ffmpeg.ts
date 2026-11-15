@@ -86,9 +86,10 @@ export function runFfmpeg(
   durationSec: number,
   onProgress: (fraction: number) => void,
   signal: AbortSignal,
+  cwd?: string,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"], cwd });
     let stderr = "";
     const onAbort = () => child.kill("SIGKILL");
     signal.addEventListener("abort", onAbort);
