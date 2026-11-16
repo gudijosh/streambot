@@ -82,4 +82,15 @@ Los puntos suspensivos también crean pausas: el registro serio se escribe espac
   2. Ajustar con `creative_update_node` los parámetros `instrumental: true`, `lyrics_type: "instrumental"` y `duration_seconds` (de 3 a 600).
   3. Ejecutarlo.
   Los nombres de los parámetros salen de `creative_get_model_schema` para `eleven_music_v2_5`.
+- `creative_add_flow_node` ya acepta esos parámetros en `model_parameters` al crear el nodo, así que basta con crearlo y ejecutarlo con `creative_run_flow_nodes` (`generations_count: 1` por estilo).
+- El estimador de `estimate_only` marca 1.500 por canción de 60 s, pero cobra 900.
 - La primera canción del canal (16-11-2026, synthwave de 60 s para el short de llegada a Vice City) se generó sin forzar el modo instrumental.
+
+### Estilo latino (16-11-2026)
+
+Al usuario le gusta lo retro de los 80 y pidió mezclarlo con lo latino de GTA 6. La emisora latina del juego es **Cocoteo FM** (reggaetón, dembow, bachata y merengue). Se probaron dos versiones instrumentales de 60 s en el flujo `wq11qy1XJIRD1SUrPFdl`:
+
+1. **Retro-reggaetón**, unos 95 BPM: dembow en caja de ritmos de los 80, caja con *gated reverb*, bajo analógico, pads y melodía de sintetizador, güiro y timbales. Nocturna y con flow.
+2. **Retro-reggae**, unos 75 BPM: reggae de raíz *one-drop*, guitarra *skank* en el contratiempo, bajo profundo, sintetizadores retro, ecos de dub, congas y shaker. Relajada y soleada.
+
+El prompt nombra géneros e instrumentos, nunca artistas ni canciones de la emisora.
