@@ -18,7 +18,9 @@ Probada y aprobada por el usuario el 15-16 de noviembre de 2026:
 | Delante de cada texto | `[strong Antioquian Paisa accent, drawn-out s]` |
 | Tomas | 2 por texto (lo normal del conector), para que el usuario elija |
 
-Se genera con la herramienta `creative_generate_speech` del conector de ElevenLabs, pasando `voice_id`, `model_id: "eleven_v4"` y el texto con la indicación de acento delante.
+Se genera con la herramienta `creative_generate_speech` del conector de ElevenLabs, pasando `voice_id`, `model_id: "eleven_v4"` y el texto con la indicación de acento delante. Si el usuario pide «una sola toma», `generations_count: 1`.
+
+**La voz no es del usuario.** Es una voz profesional de la biblioteca: su dueño puede retirarla, y solo la conserva quien la tenga en «Mis voces» y durante el periodo de aviso que él eligió. El 16-11-2026 la cuenta tenía 0 voces guardadas (`account_get_usage` → `voice_slots_used`), así que se le explicó cómo añadirla. Si vuelve a salir 0, recuérdaselo. La guía para el usuario, con el plan B (licencia del dueño o clon profesional de una voz propia o con permiso), está en `docs/voz-elevenlabs.md`.
 
 **Lo que no funcionó (no repetir):**
 - Voces diseñadas desde una descripción (`creative_design_voice`): las dos rondas sonaron «a bot», sin canto paisa.
