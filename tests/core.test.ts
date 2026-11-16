@@ -634,3 +634,86 @@ test("jugar solo: narra con captura, avisa sin OBS o con cerebro local, y no dic
   assert.match(agent.problem, /modelo local no ve imágenes/);
   assert.equal(inputs.length, 2);
 });
+
+// ---- Voz expresiva e indicaciones de tono ----
+import { stripTags } from "../src/voice/tags.js";
+import { ElevenLabsExpressiveVoice } from "../src/voice/elevenlabs.js";
+
+test("tono: se quitan las indicaciones entre corchetes para subtítulos y voces que no las entienden", () => {
+  assert.equal(stripTags("[serious, low voice] Mirá... [slowly] vos sabés , que aquí [pause] se hace bien."), "Mirá... vos sabés, que aquí se hace bien.");
+  assert.equal(stripTags("[chuckles]"), "");
+  assert.equal(stripTags("Sin corchetes, pues."), "Sin corchetes, pues.");
+  const persona = loadPersona("Don Escobar", "GTA VI");
+  assert.ok(persona.includes("Voseo siempre") && persona.includes("Serio y espaciado"));
+  assert.ok(buildUserTurn({ mode: "reply", messages: [], recentSaid: [], game: "GTA VI", minutesLive: 1, tags: true }).includes("[serious, low voice]"));
+  assert.ok(buildUserTurn({ mode: "reply", messages: [], recentSaid: [], game: "GTA VI", minutesLive: 1 }).includes("No escribas nada entre corchetes"));
+});
+
+test("voz expresiva: una petición por intervención, con el acento delante y errores claros", async () => {
+  const bodies: any[] = [];
+  const urls: string[] = [];
+  await withServer(
+    (req, body, res) => {
+      urls.push(req.url!);
+      bodies.push(body);
+      if (body.text.includes("falla")) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        return void res.end(JSON.stringify({ detail: { message: "voice not found" } }));
+      }
+      res.writeHead(200, { "Content-Type": "audio/pcm" });
+      res.end(Buffer.alloc(4801));
+    },
+    async (url) => {
+      const voice = new ElevenLabsExpressiveVoice("clave", { voiceId: "voz1", expressiveModelId: "eleven_v4", accentTag: "[paisa]" }, url);
+      const got: number[] = [];
+      await voice.speak(list(["[relaxed] Qué más pues.", "[serious] Mirá..."]), (pcm) => got.push(pcm.length), new AbortController().signal);
+      assert.deepEqual(got, [4800], "una sola petición y sin byte suelto");
+      assert.deepEqual(bodies[0], { text: "[paisa] [relaxed] Qué más pues. [serious] Mirá...", model_id: "eleven_v4" });
+      assert.equal(urls[0], "/v1/text-to-speech/voz1?output_format=pcm_24000");
+      assert.equal(voice.prepare("[paisa] ya lo lleva"), "[paisa] ya lo lleva");
+      await assert.rejects(voice.synthesize("esto falla", new AbortController().signal), /añádela a «Mis voces»/);
+    },
+  );
+});
+
+test("voz local: no lee las indicaciones de tono", async () => {
+  const inputs: string[] = [];
+  await withServer(
+    (_req, body, res) => {
+      inputs.push(body.input);
+      res.writeHead(200, { "Content-Type": "audio/wav" });
+      res.end(wav([0.1, 0.2], 24000));
+    },
+    async (url) => {
+      const voice = new LocalVoice({ ...LOCAL, localUrl: url });
+      await voice.speak(list(["[chuckles] Hágale pues.", "[pause]"]), () => {}, new AbortController().signal);
+      assert.deepEqual(inputs, ["Hágale pues."]);
+    },
+  );
+});
+
+test("agente: con voz expresiva pide indicaciones y las quita de los subtítulos", async () => {
+  const inputs: any[] = [];
+  const brain: Brain = {
+    async *reply(input) {
+      inputs.push(input);
+      yield "[relaxed] Qué más pues, parce, bienvenido. [serious, low voice] Pero mirá... aquí se trabaja.";
+    },
+  };
+  const spoken: string[] = [];
+  const voice: Voice = {
+    sampleRate: 24_000,
+    tags: true,
+    async speak(s, onAudio) {
+      for await (const x of s) { spoken.push(x); onAudio(Buffer.alloc(2)); }
+    },
+  };
+  const h = harness(brain, voice);
+  h.agent.offer(msg({ ts: 100_000 }));
+  await h.agent.tick();
+  assert.equal(inputs[0].tags, true);
+  const subs = h.events.filter((e) => e.startsWith("sub:")).join(" ");
+  assert.ok(!subs.includes("[") && subs.includes("Pero mirá..."), subs);
+  assert.ok(spoken.join(" ").includes("[serious, low voice]"), "la voz recibe las indicaciones");
+  assert.ok(!h.logs[0].text.includes("["));
+});

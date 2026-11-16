@@ -2,6 +2,7 @@ import { Selector } from "../chat/selector.js";
 import type { Brain, BrainInput, ChatMessage, Settings, Voice } from "../types.js";
 import { BrainError } from "./brain.js";
 import { toSentences } from "./sentences.js";
+import { stripTags } from "../voice/tags.js";
 
 export interface LogEntry {
   ts: number;
@@ -182,15 +183,17 @@ export class Agent {
     let audioBytes = 0;
     let error: string | undefined;
 
-    const source = job.mode === "manual" ? once(job.text) : this.generate(job, settings, abort.signal);
+    const source = job.mode === "manual" ? once(job.text) : this.generate(job, settings, !!voice.tags, abort.signal);
     const sentences = async function* (self: Agent) {
       for await (const sentence of toSentences(source)) {
         if (abort.signal.aborted) return;
-        if (SILENCE.test(sentence)) continue;
+        // Las indicaciones de tono ([serious]…) van a la voz, nunca a los subtítulos.
+        const visible = stripTags(sentence);
+        if (!visible || SILENCE.test(visible)) continue;
         show();
         firstTextAt ??= self.now();
-        text += (text ? " " : "") + sentence;
-        output.subtitle(id, sentence);
+        text += (text ? " " : "") + visible;
+        output.subtitle(id, visible);
         yield sentence;
       }
     };
@@ -272,6 +275,7 @@ export class Agent {
   private async *generate(
     job: Exclude<Job, { mode: "manual" }>,
     settings: Settings,
+    tags: boolean,
     signal: AbortSignal,
   ): AsyncIterable<string> {
     let image: string | undefined = job.mode === "narrate" ? job.image : undefined;
@@ -285,6 +289,7 @@ export class Agent {
       game: settings.game,
       minutesLive: Math.round((this.now() - this.startedAt) / 60_000),
       image,
+      tags,
     };
     yield* this.deps.brain()!.reply(input, signal);
   }

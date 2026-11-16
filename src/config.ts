@@ -22,7 +22,8 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   voice: {
     engine: "elevenlabs",
-    voiceId: "",
+    // «SEBASTIAN PAISA», de la biblioteca de voces de ElevenLabs.
+    voiceId: "bnes5tb6xZ5GxqUjhUSq",
     modelId: "eleven_flash_v2_5",
     stability: 0.45,
     similarity: 0.8,
@@ -33,6 +34,8 @@ export const DEFAULT_SETTINGS: Settings = {
     localLang: "e",
     localRefAudio: "",
     localRefText: "",
+    expressiveModelId: "eleven_v4",
+    accentTag: "[strong Antioquian Paisa accent, drawn-out s]",
   },
   obs: { enabled: false, url: "ws://127.0.0.1:4455" },
   filter: { bannedWords: [], blockLinks: true },

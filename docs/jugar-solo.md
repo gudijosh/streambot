@@ -36,14 +36,25 @@ Para mejores resultados, elige Claude Sonnet en Ajustes → Co-host y voz: es m�
 
 ## La voz del personaje
 
-Ni ElevenLabs ni StreamBot clonan voces de personas reales, y las normas de Rockstar tampoco lo permiten. La voz del personaje es una voz original diseñada en ElevenLabs a partir de una descripción (hombre colombiano, acento paisa, grave, pausado).
+StreamBot viene configurado con la voz **SEBASTIAN PAISA** de la biblioteca de ElevenLabs (ID `bnes5tb6xZ5GxqUjhUSq`). Para usarla:
 
-Para usar esa voz con la IA local no se puede descargar el modelo de ElevenLabs. Lo que sí puedes hacer:
+1. En ElevenLabs, abre la Voice Library, busca «SEBASTIAN PAISA» y pulsa **Add to My Voices**.
+2. En StreamBot, pon la clave de API de esa misma cuenta en Ajustes → Claves.
 
-1. Genera con tu voz de ElevenLabs un audio limpio de 20 a 30 segundos.
-2. Guárdalo en tu Mac y pon su ruta en Ajustes → Co-host y voz → Voz local → «Audio de referencia para clonar», con un modelo que clone (Chatterbox o Qwen3-TTS; ver [voz-local.md](voz-local.md)).
+Se usan dos modelos de ElevenLabs:
 
-Se parecerá a la original, pero no será idéntica. Revisa antes los términos de ElevenLabs sobre usar su audio en otros modelos.
+| Cuándo | Modelo | Por qué |
+|---|---|---|
+| Directo con chat | Flash v2.5 | Responde rápido. Suena más plano y no entiende indicaciones de tono. |
+| Jugar solo y narrar clips | v4 | Más humano. Entiende la indicación de acento paisa y los cambios de tono que escribe el personaje: risas, subir la voz, ponerse serio y hablar espaciado. |
+
+Los dos se cambian en Ajustes → Co-host y voz, junto con la indicación de acento que se añade delante de cada texto con v4. Los subtítulos nunca muestran las indicaciones de tono.
+
+El personaje escribe en paisa (voseo, «eavemaría», «ome», «parce»…) y tiene tres registros: campechano, sube la voz y serio y espaciado. Todo eso está en `persona/personaje.md` y se puede editar.
+
+Ni ElevenLabs ni StreamBot clonan voces de personas reales, y las normas de Rockstar tampoco lo permiten. Las advertencias del registro serio son siempre inventadas y dentro del juego.
+
+Para usar una voz parecida con la IA local, el modelo de ElevenLabs no se puede descargar. Puedes generar con él un audio limpio de 20 a 30 segundos y usarlo como «Audio de referencia para clonar» en la voz local ([voz-local.md](voz-local.md)), si los términos de la voz y de ElevenLabs lo permiten. Se parecerá, pero no será idéntica.
 
 ## Publicar
 

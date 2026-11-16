@@ -24,7 +24,7 @@ import { LocalServer, type Role } from "./server.js";
 import { Stats } from "./stats.js";
 import type { Brain, ChatMessage, Connector, ConnectorContext, ConnectorStatus, Platform, Voice } from "./types.js";
 import { Viewers } from "./viewers.js";
-import { ElevenLabsVoice, SilentVoice } from "./voice/elevenlabs.js";
+import { ElevenLabsExpressiveVoice, ElevenLabsVoice, SilentVoice } from "./voice/elevenlabs.js";
 import { LocalVoice } from "./voice/local.js";
 
 export interface AppOptions {
@@ -34,6 +34,8 @@ export interface AppOptions {
   /** Sustituyen al cerebro y la voz reales (tests). */
   brain?: Brain;
   voice?: Voice;
+  /** Servidor de ElevenLabs para la voz expresiva (tests). */
+  elevenLabsBaseUrl?: string;
   /** Sustituye a Claude al escribir la narración de un clip (tests). */
   narrator?: (frames: Frame[], duration: number) => Promise<ScriptLine[]>;
 }
@@ -73,6 +75,8 @@ export class StreamBotApp {
   private brain: Brain | null = null;
   private brainKind: "claude" | "local" | "demo" | "none" = "none";
   private voice: Voice = new SilentVoice();
+  /** Voz expresiva (ElevenLabs v3/v4) para jugar solo y narrar clips, si está configurada. */
+  private expressiveVoice: Voice | null = null;
   private voiceKind: "elevenlabs" | "local" | "silent" = "silent";
   private simOn = false;
   private ffmpegBin: string | null = null;
@@ -106,7 +110,8 @@ export class StreamBotApp {
     this.agent = new Agent({
       settings: () => this.config.settings,
       brain: () => this.brain,
-      voice: () => this.voice,
+      // Jugando solo la espera importa menos: se usa la voz expresiva si la hay.
+      voice: () => (this.config.settings.session.mode === "solo" ? this.narrationVoice() : this.voice),
       screenshot: (width) => this.obs.screenshot(width),
       canSee: () => this.brainKind === "claude" || this.brainKind === "demo",
       output: {
@@ -381,7 +386,7 @@ export class StreamBotApp {
     const apiKey = secrets.anthropicApiKey;
     const model = settings.agent.model;
     const game = settings.game;
-    const voice = this.voice;
+    const voice = this.narrationVoice();
     report({ state: "running", progress: 0, stage: "Preparando" });
     narrateClip(
       { input: item.file, start, end, output, subtitles: data.subtitles !== false },
@@ -391,7 +396,7 @@ export class StreamBotApp {
         script: (frames, duration, signal) =>
           this.options.narrator
             ? this.options.narrator(frames, duration)
-            : generateNarrationScript(apiKey, model, { persona, game, note, duration, frames }, signal),
+            : generateNarrationScript(apiKey, model, { persona, game, note, duration, frames, tags: !!voice.tags }, signal),
         progress: (stage, fraction) => {
           if (Date.now() - last < 250) return;
           last = Date.now();
@@ -419,6 +424,11 @@ export class StreamBotApp {
       })
       .finally(() => this.pushState());
     this.pushState();
+  }
+
+  /** Voz para narrar: la expresiva si hay, si no la normal. */
+  private narrationVoice(): Voice {
+    return this.voiceKind === "elevenlabs" && this.expressiveVoice ? this.expressiveVoice : this.voice;
   }
 
   // ---- Configuración ----
@@ -494,6 +504,7 @@ export class StreamBotApp {
       this.brainKind = "none";
     }
 
+    this.expressiveVoice = null;
     if (this.options.voice) {
       this.voice = this.options.voice;
       this.voiceKind = "elevenlabs";
@@ -503,6 +514,9 @@ export class StreamBotApp {
     } else if (secrets.elevenLabsApiKey && settings.voice.voiceId) {
       this.voice = new ElevenLabsVoice(secrets.elevenLabsApiKey, settings.voice);
       this.voiceKind = "elevenlabs";
+      this.expressiveVoice = settings.voice.expressiveModelId.trim()
+        ? new ElevenLabsExpressiveVoice(secrets.elevenLabsApiKey, settings.voice, this.options.elevenLabsBaseUrl)
+        : null;
     } else {
       this.voice = new SilentVoice();
       this.voiceKind = "silent";

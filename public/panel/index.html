@@ -242,13 +242,21 @@
         </label>
         <div data-engine="voice:elevenlabs">
           <label>ID de voz de ElevenLabs <input name="voice.voiceId" autocomplete="off"></label>
-          <label>Modelo de voz
+          <label>Modelo para el directo con chat
             <select name="voice.modelId">
               <option value="eleven_flash_v2_5">Flash v2.5 (menor latencia)</option>
               <option value="eleven_turbo_v2_5">Turbo v2.5</option>
               <option value="eleven_multilingual_v2">Multilingual v2 (más calidad)</option>
             </select>
           </label>
+          <label>Modelo para jugar solo y narrar clips
+            <select name="voice.expressiveModelId">
+              <option value="eleven_v4">v4 (más humano, entiende risas y cambios de tono)</option>
+              <option value="eleven_v3">v3</option>
+              <option value="">El mismo que en el directo</option>
+            </select>
+          </label>
+          <label>Indicación de acento (modelo v4/v3) <input name="voice.accentTag" autocomplete="off"></label>
         </div>
         <div data-engine="voice:local">
           <label>Servidor <input name="voice.localUrl" autocomplete="off"></label>

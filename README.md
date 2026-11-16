@@ -106,7 +106,9 @@ Plataformas, co-host y voz, filtro y comandos del chat, clips, OBS y claves.
 
 ## El personaje
 
-Su personalidad, forma de hablar y límites están en [persona/personaje.md](persona/personaje.md). Edítalo a tu gusto; `{{NOMBRE}}` y `{{JUEGO}}` se rellenan con los ajustes del panel.
+Un capo paisa de ficción que habla con voseo y tiene tres registros: campechano, sube la voz y serio y espaciado. Su personalidad, forma de hablar y límites están en [persona/personaje.md](persona/personaje.md); `{{NOMBRE}}` y `{{JUEGO}}` se rellenan con los ajustes del panel.
+
+La voz por defecto es «SEBASTIAN PAISA» de ElevenLabs: añádela a «Mis voces» en tu cuenta. En el directo se usa Flash v2.5, que es rápido; al jugar solo y al narrar clips, v4, que suena más humano y entiende el acento paisa y los cambios de tono. Ver [docs/jugar-solo.md](docs/jugar-solo.md).
 
 ## Desarrollo
 

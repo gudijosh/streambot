@@ -75,6 +75,13 @@ export interface Settings {
     localRefAudio: string;
     /** Lo que se dice en el audio de referencia. */
     localRefText: string;
+    /**
+     * Modelo expresivo de ElevenLabs para jugar solo y narrar clips (entiende
+     * indicaciones de tono entre corchetes). Vacío para usar siempre el modelo rápido.
+     */
+    expressiveModelId: string;
+    /** Indicación de acento que se antepone a cada texto con el modelo expresivo. */
+    accentTag: string;
   };
   obs: { enabled: boolean; url: string };
   filter: { bannedWords: string[]; blockLinks: boolean };
@@ -125,6 +132,8 @@ export interface BrainInput {
   minutesLive: number;
   /** Captura del juego en JPEG (base64), si el personaje puede ver la partida. */
   image?: string;
+  /** La voz entiende indicaciones de tono entre corchetes: el personaje puede usarlas. */
+  tags?: boolean;
 }
 
 export interface ClipCopy {
@@ -140,6 +149,8 @@ export interface Brain {
 
 export interface Voice {
   readonly sampleRate: number;
+  /** true si entiende indicaciones de tono entre corchetes ([serious], [chuckles]…). */
+  readonly tags?: boolean;
   /**
    * Convierte frases en audio PCM 16-bit mono. Llama a onAudio con cada trozo.
    * Si no produce audio (sin clave), el overlay solo muestra subtítulos.

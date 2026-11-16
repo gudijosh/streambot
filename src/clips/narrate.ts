@@ -4,6 +4,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import type { Voice } from "../types.js";
 import { runFfmpeg } from "./ffmpeg.js";
+import { stripTags } from "../voice/tags.js";
 
 /** Duración máxima del tramo que se narra. */
 export const MAX_NARRATION_SECONDS = 180;
@@ -281,7 +282,8 @@ export async function narrateClip(req: NarrateRequest, deps: NarrateDeps, signal
       throw new Error("La voz no generó audio. Revisa la voz en Ajustes → Co-host y voz.");
     }
 
-    const placed = placeLines(voiced, deps.voice.sampleRate, duration);
+    // El texto de cada frase queda sin indicaciones de tono para subtítulos y registro.
+    const placed = placeLines(voiced, deps.voice.sampleRate, duration).map((l) => ({ ...l, text: stripTags(l.text) }));
     const narration = path.join(work, "narracion.wav");
     fs.writeFileSync(narration, pcmToWav(mixNarration(placed, deps.voice.sampleRate, duration), deps.voice.sampleRate));
     let subtitles: string | undefined;
