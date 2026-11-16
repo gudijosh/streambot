@@ -64,6 +64,11 @@
     </div>
     <p id="agent-status" role="status"></p>
     <p id="now-saying" hidden></p>
+    <div class="row scripts" role="group" aria-label="Guiones">
+      <button type="button" data-script="intros">Intro</button>
+      <button type="button" data-script="outros">Despedida</button>
+      <button type="button" data-script="brb">Vuelvo enseguida</button>
+    </div>
     <form id="say">
       <label for="say-text">Que el personaje diga</label>
       <div class="row">
@@ -276,6 +281,17 @@
         <label>Velocidad de la voz <input type="number" name="voice.speed" min="0.7" max="1.2" step="0.05"></label>
       </fieldset>
       <button type="submit">Guardar co-host</button>
+    </form>
+  </details>
+
+  <details open>
+    <summary>Guiones</summary>
+    <form data-settings>
+      <p class="hint">Lo que dicen los botones Intro, Despedida y Vuelvo enseguida: uno por línea, se elige al azar. Las indicaciones entre corchetes solo las usa la voz v4; más ejemplos en docs/guiones.md.</p>
+      <label>Intros <textarea name="scripts.intros" rows="4"></textarea></label>
+      <label>Despedidas <textarea name="scripts.outros" rows="3"></textarea></label>
+      <label>Vuelvo enseguida <textarea name="scripts.brb" rows="2"></textarea></label>
+      <button type="submit">Guardar guiones</button>
     </form>
   </details>
 

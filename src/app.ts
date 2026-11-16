@@ -21,6 +21,7 @@ import { serveFile } from "./media.js";
 import { ObsController } from "./obs.js";
 import { BRAND_DIR } from "./paths.js";
 import { LocalServer, type Role } from "./server.js";
+import { isScriptKind, pickScript, type ScriptKind } from "./scripts.js";
 import { Stats } from "./stats.js";
 import type { Brain, ChatMessage, Connector, ConnectorContext, ConnectorStatus, Platform, Voice } from "./types.js";
 import { Viewers } from "./viewers.js";
@@ -83,6 +84,7 @@ export class StreamBotApp {
   private exportJob: { abort: AbortController; clipId: string; kind: "export" | "narrate" } | null = null;
   private readonly pendingReplay: Marker[] = [];
   private readonly commandUsed = new Map<string, number>();
+  private readonly lastScript = new Map<ScriptKind, string>();
   private readonly chatHistory: unknown[] = [];
   private readonly chatLog: ChatMessage[] = [];
   private readonly logHistory: LogEntry[] = [];
@@ -708,6 +710,14 @@ export class StreamBotApp {
         else if (data.action === "skip") this.agent.skip();
         else throw new Error("Acción desconocida.");
         return { ok: true };
+      case "script": {
+        if (!isScriptKind(data.kind)) throw new Error("Guion desconocido.");
+        const text = pickScript(this.config.settings.scripts[data.kind], this.lastScript.get(data.kind));
+        if (!text) throw new Error("No hay guiones de ese tipo. Escríbelos en Ajustes → Guiones.");
+        this.lastScript.set(data.kind, text);
+        this.agent.say(text);
+        return { ok: true };
+      }
       case "say":
         if (typeof data.text !== "string" || !data.text.trim()) throw new Error("Escribe el texto que debe decir.");
         this.agent.say(data.text);

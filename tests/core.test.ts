@@ -644,7 +644,7 @@ test("tono: se quitan las indicaciones entre corchetes para subtítulos y voces 
   assert.equal(stripTags("[chuckles]"), "");
   assert.equal(stripTags("Sin corchetes, pues."), "Sin corchetes, pues.");
   const persona = loadPersona("Don Escobar", "GTA VI");
-  assert.ok(persona.includes("Voseo siempre") && persona.includes("Serio y espaciado"));
+  assert.ok(persona.includes("Vos y usted") && persona.includes("Serio y espaciado"));
   assert.ok(buildUserTurn({ mode: "reply", messages: [], recentSaid: [], game: "GTA VI", minutesLive: 1, tags: true }).includes("[serious, low voice]"));
   assert.ok(buildUserTurn({ mode: "reply", messages: [], recentSaid: [], game: "GTA VI", minutesLive: 1 }).includes("No escribas nada entre corchetes"));
 });
@@ -716,4 +716,26 @@ test("agente: con voz expresiva pide indicaciones y las quita de los subtítulos
   assert.ok(!subs.includes("[") && subs.includes("Pero mirá..."), subs);
   assert.ok(spoken.join(" ").includes("[serious, low voice]"), "la voz recibe las indicaciones");
   assert.ok(!h.logs[0].text.includes("["));
+});
+
+// ---- Guiones e intros a un botón ----
+import { pickScript } from "../src/scripts.js";
+
+test("guiones: elige al azar sin repetir el último y avisa si no hay", () => {
+  const list = ["uno", " dos ", "", "tres"];
+  for (let i = 0; i < 50; i++) assert.notEqual(pickScript(list, "dos"), "dos");
+  assert.equal(pickScript(["solo"], "solo"), "solo", "con un solo guion se repite");
+  assert.equal(pickScript(["", "  "], undefined), null);
+  assert.equal(pickScript(list, undefined, () => 0.99), "tres");
+  assert.ok(DEFAULT_SETTINGS.scripts.intros.length >= 3 && DEFAULT_SETTINGS.scripts.outros.length >= 2 && DEFAULT_SETTINGS.scripts.brb.length >= 2);
+  for (const s of [...DEFAULT_SETTINGS.scripts.intros, ...DEFAULT_SETTINGS.scripts.outros, ...DEFAULT_SETTINGS.scripts.brb]) {
+    assert.ok(stripTags(s).length > 20 && !/plata o plomo/i.test(s));
+  }
+});
+
+test("personaje: usted en lo serio, vos en confianza, glosario y lo que nunca dice", () => {
+  const persona = loadPersona("Don Escobar", "GTA VI");
+  assert.ok(persona.includes("Vos y usted, como en Antioquia"));
+  assert.ok(persona.includes("los tombos (la policía)") && persona.includes("verraco"));
+  assert.ok(persona.includes("Frases reales de Pablo Escobar"));
 });
