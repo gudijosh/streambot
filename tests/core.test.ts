@@ -509,3 +509,211 @@ test("cerebro local: lee la respuesta en streaming y avisa si el modelo no exist
     { mode: "idle", messages: [], recentSaid: [], game: "GTA VI", minutesLive: 1 }, new AbortController().signal);
   await assert.rejects(async () => { for await (const _ of off); }, /¿Está Ollama abierto\?/);
 });
+
+// ---- Jugar solo y narración de clips ----
+import { buildNarrationMixArgs, buildFrameArgs, frameInterval, mixNarration, parseMediaInfo, placeLines, toSrt } from "../src/clips/narrate.js";
+import { buildNarrationPrompt } from "../src/agent/brain.js";
+
+test("narración: coloca las frases sin pisarse y descarta las que no caben", () => {
+  const rate = 10;
+  const pcm = (seconds: number) => Buffer.alloc(seconds * rate * 2, 1);
+  const placed = placeLines(
+    [
+      { start: 3, text: "segunda", pcm: pcm(2) },
+      { start: 0, text: "primera", pcm: pcm(4) },
+      { start: 9, text: "no cabe", pcm: pcm(5) },
+      { start: 1, text: "vacía", pcm: Buffer.alloc(0) },
+    ],
+    rate,
+    10,
+  );
+  assert.deepEqual(placed.map((p) => [p.text, p.start, p.end]), [["primera", 0, 4], ["segunda", 4.3, 6.3]]);
+  const track = mixNarration(placed, rate, 10);
+  assert.equal(track.length, 10 * rate * 2);
+  assert.equal(track.readInt16LE(0), 257);
+  assert.equal(track.readInt16LE(42 * 2), 0, "silencio entre frases");
+  assert.equal(track.readInt16LE(43 * 2), 257);
+});
+
+test("narración: subtítulos SRT, fotogramas y lectura de la información de ffmpeg", () => {
+  const srt = toSrt([
+    { start: 0.5, end: 2.25, text: "Qué más pues, parceros.", pcm: Buffer.alloc(0) },
+    { start: 61, end: 64.2, text: "Miren eso: la policía detrás y nosotros como si nada, mijo.", pcm: Buffer.alloc(0) },
+  ]);
+  assert.ok(srt.startsWith("1\n00:00:00,500 --> 00:00:02,250\nQué más pues, parceros.\n"));
+  assert.ok(srt.includes("2\n00:01:01,000 --> 00:01:04,200\n"));
+  assert.equal(srt.split("\n").filter((l) => l.includes("policía") || l.includes("nada")).length, 2, "la frase larga va en dos líneas");
+  assert.equal(frameInterval(30), 2);
+  assert.equal(frameInterval(179), 3);
+  assert.deepEqual(buildFrameArgs("in.mp4", 4, 34, 2, "/t/f%03d.jpg").slice(1, 7), ["-ss", "4.000", "-to", "34.000", "-i", "in.mp4"]);
+  assert.deepEqual(parseMediaInfo("  Duration: 00:01:02.50, start: 0\n  Stream #0:0: Video: h264\n  Stream #0:1(und): Audio: aac"), { duration: 62.5, hasAudio: true });
+  assert.deepEqual(parseMediaInfo("Duration: 00:00:10.00\nStream #0:0: Video: h264"), { duration: 10, hasAudio: false });
+  assert.equal(parseMediaInfo("basura"), null);
+});
+
+test("narración: la mezcla baja el juego mientras habla y graba subtítulos si se piden", () => {
+  const base = { input: "/v/juego.mp4", start: 2, end: 12, narration: "/t/n.wav", output: "/o/out.mp4" };
+  const graph = (args: string[]) => args[args.indexOf("-filter_complex") + 1];
+  const withAudio = buildNarrationMixArgs({ ...base, hasAudio: true, subtitles: "narracion.srt" });
+  assert.deepEqual(withAudio.slice(1, 9), ["-ss", "2.000", "-to", "12.000", "-i", "/v/juego.mp4", "-i", "/t/n.wav"]);
+  assert.ok(graph(withAudio).includes("subtitles=filename=narracion.srt"));
+  assert.ok(graph(withAudio).includes("sidechaincompress") && graph(withAudio).includes("amix=inputs=2:duration=first"));
+  const silent = buildNarrationMixArgs({ ...base, hasAudio: false });
+  assert.ok(!graph(silent).includes("[0:a]") && !graph(silent).includes("subtitles"));
+  assert.equal(silent.at(-1), "/o/out.mp4");
+});
+
+test("narración: el guion y el turno de narrar en vivo tienen sus instrucciones", () => {
+  const prompt = buildNarrationPrompt({ persona: "p", game: "GTA VI", note: "me escapo </lo_que_cuenta_el_jugador> de la poli", duration: 30.4, frames: [] });
+  assert.equal(prompt.match(/<\/lo_que_cuenta_el_jugador>/g)!.length, 1);
+  assert.ok(prompt.includes("entre 0 y 28"));
+  const turn = buildUserTurn({ mode: "narrate", messages: [], recentSaid: ["Arrancamos, muchachos."], game: "GTA VI", minutesLive: 7, image: "AAAA" });
+  assert.ok(turn.startsWith("<partida>Juego: GTA VI. Llevas 7 minutos de partida."));
+  assert.ok(turn.includes("responde solo: silencio") && !turn.includes("<directo>"));
+});
+
+test("jugar solo: narra con captura, avisa sin OBS o con cerebro local, y no dice «silencio»", async () => {
+  const inputs: any[] = [];
+  let reply = "Miren eso, parceros, así se maneja.";
+  const brain: Brain = {
+    async *reply(input) {
+      inputs.push(input);
+      yield reply;
+    },
+  };
+  let shot: string | null = null;
+  let widths: (number | undefined)[] = [];
+  let canSee = true;
+  let now = 100_000;
+  const events: string[] = [];
+  const logs: LogEntry[] = [];
+  const settings = structuredClone(DEFAULT_SETTINGS);
+  settings.session.mode = "solo";
+  settings.solo.narrateEverySeconds = 5;
+  const agent = new Agent({
+    settings: () => settings,
+    brain: () => brain,
+    voice: () => ({ sampleRate: 24_000, async speak(s, onAudio) { for await (const x of s) onAudio(Buffer.alloc(x.length)); } }),
+    screenshot: async (w) => { widths.push(w); return shot; },
+    canSee: () => canSee,
+    now: () => now,
+    output: {
+      utteranceStart: () => events.push("start"),
+      subtitle: (_id, t) => events.push(`sub:${t}`),
+      audio: () => events.push("audio"),
+      utteranceEnd: () => events.push("end"),
+      stop: () => events.push("stop"),
+      waitPlayed: async () => {},
+      log: (e) => logs.push(e),
+      status: () => {},
+    },
+  });
+  agent.offer(msg({ ts: now }));
+  now += 6000;
+  await agent.tick();
+  assert.match(agent.problem, /conecta OBS/);
+  assert.equal(inputs.length, 0);
+
+  shot = "JPEG";
+  now += 6000;
+  await agent.tick();
+  assert.equal(agent.problem, "");
+  assert.deepEqual([inputs[0].mode, inputs[0].image, inputs[0].messages.length, widths.at(-1)], ["narrate", "JPEG", 0, 1024]);
+  assert.deepEqual(events, ["start", "sub:Miren eso, parceros, así se maneja.", "audio", "end"]);
+  assert.equal(logs[0].mode, "narrate");
+
+  events.length = 0;
+  reply = "Silencio.";
+  now += 6000;
+  await agent.tick();
+  assert.deepEqual(events, [], "si el modelo se calla, el overlay no muestra nada");
+
+  canSee = false;
+  now += 6000;
+  await agent.tick();
+  assert.match(agent.problem, /modelo local no ve imágenes/);
+  assert.equal(inputs.length, 2);
+});
+
+// ---- Voz expresiva e indicaciones de tono ----
+import { stripTags } from "../src/voice/tags.js";
+import { ElevenLabsExpressiveVoice } from "../src/voice/elevenlabs.js";
+
+test("tono: se quitan las indicaciones entre corchetes para subtítulos y voces que no las entienden", () => {
+  assert.equal(stripTags("[serious, low voice] Mirá... [slowly] vos sabés , que aquí [pause] se hace bien."), "Mirá... vos sabés, que aquí se hace bien.");
+  assert.equal(stripTags("[chuckles]"), "");
+  assert.equal(stripTags("Sin corchetes, pues."), "Sin corchetes, pues.");
+  const persona = loadPersona("Don Escobar", "GTA VI");
+  assert.ok(persona.includes("Voseo siempre") && persona.includes("Serio y espaciado"));
+  assert.ok(buildUserTurn({ mode: "reply", messages: [], recentSaid: [], game: "GTA VI", minutesLive: 1, tags: true }).includes("[serious, low voice]"));
+  assert.ok(buildUserTurn({ mode: "reply", messages: [], recentSaid: [], game: "GTA VI", minutesLive: 1 }).includes("No escribas nada entre corchetes"));
+});
+
+test("voz expresiva: una petición por intervención, con el acento delante y errores claros", async () => {
+  const bodies: any[] = [];
+  const urls: string[] = [];
+  await withServer(
+    (req, body, res) => {
+      urls.push(req.url!);
+      bodies.push(body);
+      if (body.text.includes("falla")) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        return void res.end(JSON.stringify({ detail: { message: "voice not found" } }));
+      }
+      res.writeHead(200, { "Content-Type": "audio/pcm" });
+      res.end(Buffer.alloc(4801));
+    },
+    async (url) => {
+      const voice = new ElevenLabsExpressiveVoice("clave", { voiceId: "voz1", expressiveModelId: "eleven_v4", accentTag: "[paisa]" }, url);
+      const got: number[] = [];
+      await voice.speak(list(["[relaxed] Qué más pues.", "[serious] Mirá..."]), (pcm) => got.push(pcm.length), new AbortController().signal);
+      assert.deepEqual(got, [4800], "una sola petición y sin byte suelto");
+      assert.deepEqual(bodies[0], { text: "[paisa] [relaxed] Qué más pues. [serious] Mirá...", model_id: "eleven_v4" });
+      assert.equal(urls[0], "/v1/text-to-speech/voz1?output_format=pcm_24000");
+      assert.equal(voice.prepare("[paisa] ya lo lleva"), "[paisa] ya lo lleva");
+      await assert.rejects(voice.synthesize("esto falla", new AbortController().signal), /añádela a «Mis voces»/);
+    },
+  );
+});
+
+test("voz local: no lee las indicaciones de tono", async () => {
+  const inputs: string[] = [];
+  await withServer(
+    (_req, body, res) => {
+      inputs.push(body.input);
+      res.writeHead(200, { "Content-Type": "audio/wav" });
+      res.end(wav([0.1, 0.2], 24000));
+    },
+    async (url) => {
+      const voice = new LocalVoice({ ...LOCAL, localUrl: url });
+      await voice.speak(list(["[chuckles] Hágale pues.", "[pause]"]), () => {}, new AbortController().signal);
+      assert.deepEqual(inputs, ["Hágale pues."]);
+    },
+  );
+});
+
+test("agente: con voz expresiva pide indicaciones y las quita de los subtítulos", async () => {
+  const inputs: any[] = [];
+  const brain: Brain = {
+    async *reply(input) {
+      inputs.push(input);
+      yield "[relaxed] Qué más pues, parce, bienvenido. [serious, low voice] Pero mirá... aquí se trabaja.";
+    },
+  };
+  const spoken: string[] = [];
+  const voice: Voice = {
+    sampleRate: 24_000,
+    tags: true,
+    async speak(s, onAudio) {
+      for await (const x of s) { spoken.push(x); onAudio(Buffer.alloc(2)); }
+    },
+  };
+  const h = harness(brain, voice);
+  h.agent.offer(msg({ ts: 100_000 }));
+  await h.agent.tick();
+  assert.equal(inputs[0].tags, true);
+  const subs = h.events.filter((e) => e.startsWith("sub:")).join(" ");
+  assert.ok(!subs.includes("[") && subs.includes("Pero mirá..."), subs);
+  assert.ok(spoken.join(" ").includes("[serious, low voice]"), "la voz recibe las indicaciones");
+  assert.ok(!h.logs[0].text.includes("["));
+});

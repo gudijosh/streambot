@@ -1,5 +1,7 @@
 import type { Settings, Voice } from "../types.js";
 import { VoiceError } from "./elevenlabs.js";
+import { speakSentences } from "./pipeline.js";
+import { stripTags } from "./tags.js";
 
 const SAMPLE_RATE = 24_000;
 /** Frases que se sintetizan a la vez: la que suena y la siguiente. */
@@ -135,59 +137,20 @@ export class LocalVoice implements Voice {
     return toPcm16(parseWav(data), SAMPLE_RATE);
   }
 
-  async speak(
-    sentences: AsyncIterable<string>,
-    onAudio: (pcm: Buffer) => void,
-    signal: AbortSignal,
-  ): Promise<void> {
-    const results: Promise<Buffer>[] = [];
-    let finished = false;
-    let inFlight = 0;
-    let wake: (() => void) | null = null;
-    const notify = () => {
-      wake?.();
-      wake = null;
-    };
-    const wait = () => new Promise<void>((resolve) => (wake = resolve));
-
-    let failure: unknown = null;
-    const producer = (async () => {
-      try {
-        for await (const sentence of sentences) {
-          while (inFlight >= MAX_IN_FLIGHT && !signal.aborted && !failure) await wait();
-          if (signal.aborted || failure) return;
-          inFlight++;
-          const job = this.synthesize(sentence, signal).finally(() => {
-            inFlight--;
-            notify();
-          });
-          job.catch(() => {});
-          results.push(job);
-          notify();
+  speak(sentences: AsyncIterable<string>, onAudio: (pcm: Buffer) => void, signal: AbortSignal): Promise<void> {
+    return speakSentences(
+      // Los modelos locales no entienden las indicaciones de tono: se quitan.
+      (async function* () {
+        for await (const s of sentences) {
+          const clean = stripTags(s);
+          if (clean) yield clean;
         }
-      } catch (err) {
-        failure = err;
-      } finally {
-        finished = true;
-        notify();
-      }
-    })();
-
-    try {
-      for (let i = 0; ; i++) {
-        while (i >= results.length && !finished) await wait();
-        if (i >= results.length) break;
-        const pcm = await results[i];
-        if (signal.aborted) return;
-        onAudio(pcm);
-      }
-    } catch (err) {
-      if (signal.aborted) return;
-      failure = err;
-      notify();
-    }
-    await producer;
-    if (failure && !signal.aborted) throw failure;
+      })(),
+      (text, sig) => this.synthesize(text, sig),
+      onAudio,
+      signal,
+      MAX_IN_FLIGHT,
+    );
   }
 
   /** Voces que ofrece el modelo configurado, si el servidor sabe listarlas. */

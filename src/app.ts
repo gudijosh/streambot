@@ -4,13 +4,14 @@ import type http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { Agent, type LogEntry } from "./agent/agent.js";
-import { ClaudeBrain, DemoBrain, generateClipCopy, loadPersona } from "./agent/brain.js";
+import { BrainError, ClaudeBrain, DemoBrain, generateClipCopy, generateNarrationScript, loadPersona } from "./agent/brain.js";
 import { LocalBrain } from "./agent/local-brain.js";
 import { BrandKit, MAX_UPLOAD_BYTES, SLOTS, isSlot, parsePairs } from "./brand.js";
 import { ChatFilter } from "./chat/filter.js";
 import { buildFfmpegArgs, findFfmpeg, isClipFormat, runFfmpeg } from "./clips/ffmpeg.js";
 import { Highlights, type Marker, type MarkerReason, SpikeDetector } from "./clips/highlights.js";
 import { ClipLibrary } from "./clips/library.js";
+import { type Frame, MAX_NARRATION_SECONDS, narrateClip, type ScriptLine } from "./clips/narrate.js";
 import { ConfigStore } from "./config.js";
 import { SimulatorConnector } from "./connectors/simulator.js";
 import { TikTokConnector } from "./connectors/tiktok.js";
@@ -23,7 +24,7 @@ import { LocalServer, type Role } from "./server.js";
 import { Stats } from "./stats.js";
 import type { Brain, ChatMessage, Connector, ConnectorContext, ConnectorStatus, Platform, Voice } from "./types.js";
 import { Viewers } from "./viewers.js";
-import { ElevenLabsVoice, SilentVoice } from "./voice/elevenlabs.js";
+import { ElevenLabsExpressiveVoice, ElevenLabsVoice, SilentVoice } from "./voice/elevenlabs.js";
 import { LocalVoice } from "./voice/local.js";
 
 export interface AppOptions {
@@ -33,6 +34,10 @@ export interface AppOptions {
   /** Sustituyen al cerebro y la voz reales (tests). */
   brain?: Brain;
   voice?: Voice;
+  /** Servidor de ElevenLabs para la voz expresiva (tests). */
+  elevenLabsBaseUrl?: string;
+  /** Sustituye a Claude al escribir la narración de un clip (tests). */
+  narrator?: (frames: Frame[], duration: number) => Promise<ScriptLine[]>;
 }
 
 const HISTORY = 80;
@@ -70,10 +75,12 @@ export class StreamBotApp {
   private brain: Brain | null = null;
   private brainKind: "claude" | "local" | "demo" | "none" = "none";
   private voice: Voice = new SilentVoice();
+  /** Voz expresiva (ElevenLabs v3/v4) para jugar solo y narrar clips, si está configurada. */
+  private expressiveVoice: Voice | null = null;
   private voiceKind: "elevenlabs" | "local" | "silent" = "silent";
   private simOn = false;
   private ffmpegBin: string | null = null;
-  private exportJob: { abort: AbortController; clipId: string } | null = null;
+  private exportJob: { abort: AbortController; clipId: string; kind: "export" | "narrate" } | null = null;
   private readonly pendingReplay: Marker[] = [];
   private readonly commandUsed = new Map<string, number>();
   private readonly chatHistory: unknown[] = [];
@@ -103,8 +110,10 @@ export class StreamBotApp {
     this.agent = new Agent({
       settings: () => this.config.settings,
       brain: () => this.brain,
-      voice: () => this.voice,
-      screenshot: () => this.obs.screenshot(),
+      // Jugando solo la espera importa menos: se usa la voz expresiva si la hay.
+      voice: () => (this.config.settings.session.mode === "solo" ? this.narrationVoice() : this.voice),
+      screenshot: (width) => this.obs.screenshot(width),
+      canSee: () => this.brainKind === "claude" || this.brainKind === "demo",
       output: {
         utteranceStart: (u) =>
           this.server.send(["panel", "overlay"], {
@@ -160,6 +169,8 @@ export class StreamBotApp {
 
   /** Recibe un mensaje de cualquier plataforma: lo muestra y, si pasa el filtro, lo ofrece al personaje. */
   ingest(msg: ChatMessage): void {
+    // Jugando sin directo no hay chat al que atender.
+    if (this.config.settings.session.mode === "solo") return;
     this.stats.message(msg);
     if (msg.kind === "chat" && msg.text.startsWith("!")) this.handleCommand(msg);
 
@@ -290,7 +301,7 @@ export class StreamBotApp {
     });
 
     const abort = new AbortController();
-    this.exportJob = { abort, clipId: item.id };
+    this.exportJob = { abort, clipId: item.id, kind: "export" };
     const report = (patch: Record<string, unknown>) =>
       this.server.send("panel", { type: "export", clipId: item.id, ...patch });
     let last = 0;
@@ -325,11 +336,111 @@ export class StreamBotApp {
       game: settings.game,
       note,
       chat: at ? this.chatLog.filter((m) => m.kind === "chat" && m.ts > at - 60_000 && m.ts < at + 10_000).slice(-25) : [],
-      said: at ? this.logHistory.filter((l) => l.text && l.ts > at - 60_000 && l.ts < at + 10_000).map((l) => l.text) : [],
+      said: item.script?.length
+        ? item.script
+        : at
+          ? this.logHistory.filter((l) => l.text && l.ts > at - 60_000 && l.ts < at + 10_000).map((l) => l.text)
+          : [],
     });
     this.library.update(item.id, { note, copy });
     this.pushState();
     return copy;
+  }
+
+  /** Narra un tramo de un vídeo de la biblioteca con la voz del personaje y lo guarda como vídeo nuevo. */
+  private startNarration(data: Record<string, unknown>): void {
+    if (this.exportJob) throw new Error("Ya hay una exportación o narración en marcha.");
+    if (!this.ffmpegBin) {
+      throw new Error('No encuentro ffmpeg. Instálalo con "brew install ffmpeg" o indica su ruta en Ajustes → Clips.');
+    }
+    const { settings, secrets } = this.config;
+    if (!secrets.anthropicApiKey) throw new Error("Narrar clips necesita la clave de Anthropic (Ajustes → Claves).");
+    const voice = this.clipVoice();
+    if (!voice) {
+      throw new Error("Configura una voz (ElevenLabs o local) en Ajustes → Co-host y voz para narrar clips.");
+    }
+    const item = this.library.get(data.id);
+    if (!fs.existsSync(item.file)) throw new Error("El archivo original ya no existe.");
+    const start = Number(data.start);
+    const end = Number(data.end);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) {
+      throw new Error("Marca un inicio y un fin válidos.");
+    }
+    if (end - start > MAX_NARRATION_SECONDS) throw new Error("Para narrar, marca un tramo de 3 minutos como mucho.");
+    const note = typeof data.note === "string" ? data.note.slice(0, 500) : (item.note ?? "");
+
+    const folder = this.clipsFolder();
+    fs.mkdirSync(folder, { recursive: true });
+    const base = path.parse(item.name).name.replace(/[^\w.-]+/g, "_").slice(0, 60);
+    let output = "";
+    for (let n = 0; ; n++) {
+      output = path.join(folder, `${base}_narrado_${timeTag(start)}-${timeTag(end)}${n ? `_${n}` : ""}.mp4`);
+      if (!fs.existsSync(output)) break;
+    }
+
+    const abort = new AbortController();
+    this.exportJob = { abort, clipId: item.id, kind: "narrate" };
+    const report = (patch: Record<string, unknown>) =>
+      this.server.send("panel", { type: "export", clipId: item.id, kind: "narrate", ...patch });
+    let last = 0;
+    const persona = loadPersona(settings.personaName, settings.game);
+    const apiKey = secrets.anthropicApiKey;
+    const model = settings.agent.model;
+    const game = settings.game;
+    report({ state: "running", progress: 0, stage: "Preparando" });
+    narrateClip(
+      { input: item.file, start, end, output, subtitles: data.subtitles !== false },
+      {
+        ffmpeg: this.ffmpegBin,
+        voice,
+        script: (frames, duration, signal) =>
+          this.options.narrator
+            ? this.options.narrator(frames, duration)
+            : generateNarrationScript(apiKey, model, { persona, game, note, duration, frames, tags: !!voice.tags }, signal),
+        progress: (stage, fraction) => {
+          if (Date.now() - last < 250) return;
+          last = Date.now();
+          report({ state: "running", progress: fraction, stage });
+        },
+      },
+      abort.signal,
+    )
+      .then(({ lines }) => {
+        const created = this.library.add(output, "export", {
+          markerTs: item.markerTs,
+          note,
+          script: lines.map((l) => l.text),
+        });
+        this.library.update(item.id, { note });
+        this.exportJob = null;
+        report({ state: "done", progress: 1, newId: created.id, file: output });
+      })
+      .catch((err: Error) => {
+        fs.rmSync(output, { force: true });
+        this.exportJob = null;
+        const message = abort.signal.aborted ? "Narración cancelada." : err.message;
+        if (err instanceof BrainError && err.fatal) this.agent.problem = err.message;
+        report({ state: "error", error: message });
+      })
+      .finally(() => this.pushState());
+    this.pushState();
+  }
+
+  /** Voz para narrar: la expresiva si hay, si no la normal. */
+  private narrationVoice(): Voice {
+    return this.voiceKind === "elevenlabs" && this.expressiveVoice ? this.expressiveVoice : this.voice;
+  }
+
+  /**
+   * Voz para narrar clips: la local si así se ha elegido (aunque el directo use
+   * ElevenLabs), si no la misma que al jugar solo. null si no hay ninguna voz.
+   */
+  private clipVoice(): Voice | null {
+    const { voice } = this.config.settings;
+    if (!this.options.voice && voice.clipsEngine === "local") {
+      return voice.localModel.trim() ? new LocalVoice(voice) : null;
+    }
+    return this.voiceKind === "silent" ? null : this.narrationVoice();
   }
 
   // ---- Configuración ----
@@ -340,13 +451,15 @@ export class StreamBotApp {
     this.filter.setOptions(settings.filter);
 
     const wanted = new Map<Platform, { signature: string; make: () => Connector }>();
-    if (settings.twitch.enabled && settings.twitch.channel) {
+    // Jugando sin directo no se conecta a ningún chat.
+    const solo = settings.session.mode === "solo";
+    if (!solo && settings.twitch.enabled && settings.twitch.channel) {
       wanted.set("twitch", {
         signature: settings.twitch.channel,
         make: () => new TwitchConnector(settings.twitch.channel, this.context("twitch")),
       });
     }
-    if (settings.youtube.enabled && settings.youtube.videoId) {
+    if (!solo && settings.youtube.enabled && settings.youtube.videoId) {
       wanted.set("youtube", {
         signature: [settings.youtube.videoId, settings.youtube.pollSeconds, secrets.youtubeApiKey].join("|"),
         make: () =>
@@ -358,13 +471,13 @@ export class StreamBotApp {
           ),
       });
     }
-    if (settings.tiktok.enabled && settings.tiktok.username) {
+    if (!solo && settings.tiktok.enabled && settings.tiktok.username) {
       wanted.set("tiktok", {
         signature: settings.tiktok.username,
         make: () => new TikTokConnector(settings.tiktok.username, this.context("tiktok")),
       });
     }
-    if (this.simOn) {
+    if (!solo && this.simOn) {
       wanted.set("sim", { signature: "sim", make: () => new SimulatorConnector(this.context("sim")) });
     }
 
@@ -403,6 +516,7 @@ export class StreamBotApp {
       this.brainKind = "none";
     }
 
+    this.expressiveVoice = null;
     if (this.options.voice) {
       this.voice = this.options.voice;
       this.voiceKind = "elevenlabs";
@@ -412,6 +526,9 @@ export class StreamBotApp {
     } else if (secrets.elevenLabsApiKey && settings.voice.voiceId) {
       this.voice = new ElevenLabsVoice(secrets.elevenLabsApiKey, settings.voice);
       this.voiceKind = "elevenlabs";
+      this.expressiveVoice = settings.voice.expressiveModelId.trim()
+        ? new ElevenLabsExpressiveVoice(secrets.elevenLabsApiKey, settings.voice, this.options.elevenLabsBaseUrl)
+        : null;
     } else {
       this.voice = new SilentVoice();
       this.voiceKind = "silent";
@@ -466,6 +583,7 @@ export class StreamBotApp {
         ffmpeg: !!this.ffmpegBin,
         folder: this.clipsFolder(),
         exporting: this.exportJob?.clipId ?? null,
+        exportingKind: this.exportJob?.kind ?? null,
         items: this.library.list(),
         markers: this.highlights.list(),
       },
@@ -569,10 +687,17 @@ export class StreamBotApp {
     if (method === "GET" && route === "state") return this.state();
     if (method !== "POST") throw new Error("Método no admitido.");
     switch (route) {
-      case "settings":
+      case "settings": {
+        const before = this.config.settings.session.mode;
         this.config.updateSettings(data);
+        if (this.config.settings.session.mode !== before) {
+          // Al cambiar de modo se descarta el chat pendiente y los avisos del modo anterior.
+          this.agent.selector.clear();
+          this.agent.problem = "";
+        }
         await this.apply();
         return this.state();
+      }
       case "secrets":
         this.config.updateSecrets(data);
         await this.apply();
@@ -616,6 +741,9 @@ export class StreamBotApp {
         return { ok: true };
       case "clips/export":
         this.startExport(data);
+        return { ok: true };
+      case "clips/narrate":
+        this.startNarration(data);
         return { ok: true };
       case "clips/cancel":
         this.exportJob?.abort.abort();

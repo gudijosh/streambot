@@ -17,6 +17,8 @@ export interface ClipItem {
   /** Nota del operador: de qué va el clip. */
   note?: string;
   copy?: ClipCopy;
+  /** Frases de la narración, si el vídeo se narró con la IA. */
+  script?: string[];
 }
 
 const MAX_ITEMS = 500;
@@ -42,7 +44,7 @@ export class ClipLibrary {
     fs.writeFileSync(this.indexFile, JSON.stringify(this.items, null, 2));
   }
 
-  add(file: string, kind: ClipKind, extra: Partial<Pick<ClipItem, "markerTs" | "note">> = {}): ClipItem {
+  add(file: string, kind: ClipKind, extra: Partial<Pick<ClipItem, "markerTs" | "note" | "script">> = {}): ClipItem {
     const resolved = path.resolve(file);
     if (!VIDEO_EXTENSIONS.includes(path.extname(resolved).toLowerCase())) {
       throw new Error(`Solo se admiten vídeos (${VIDEO_EXTENSIONS.join(", ")}).`);

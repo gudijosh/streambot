@@ -75,6 +75,18 @@ export interface Settings {
     localRefAudio: string;
     /** Lo que se dice en el audio de referencia. */
     localRefText: string;
+    /**
+     * Modelo expresivo de ElevenLabs para jugar solo y narrar clips (entiende
+     * indicaciones de tono entre corchetes). Vacío para usar siempre el modelo rápido.
+     */
+    expressiveModelId: string;
+    /** Indicación de acento que se antepone a cada texto con el modelo expresivo. */
+    accentTag: string;
+    /**
+     * Voz para narrar clips después: "elevenlabs" (la configurada arriba) o "local"
+     * (el servidor de voz de este ordenador, aunque el directo use ElevenLabs).
+     */
+    clipsEngine: string;
   };
   obs: { enabled: boolean; url: string };
   filter: { bannedWords: string[]; blockLinks: boolean };
@@ -98,6 +110,14 @@ export interface Settings {
   };
   /** Comandos del chat, uno por línea: "redes = Sígueme en TikTok". */
   commands: string[];
+  session: {
+    /** "stream": responde al chat del directo. "solo": narra la partida sin directo. */
+    mode: string;
+  };
+  solo: {
+    /** Segundos de silencio entre una narración y la siguiente. */
+    narrateEverySeconds: number;
+  };
 }
 
 export interface Secrets {
@@ -109,13 +129,16 @@ export interface Secrets {
 
 /** Entrada para generar una intervención del personaje. */
 export interface BrainInput {
-  mode: "reply" | "summary" | "idle";
+  /** "narrate": jugando sin directo, comenta la captura de la partida. */
+  mode: "reply" | "summary" | "idle" | "narrate";
   messages: ChatMessage[];
   recentSaid: string[];
   game: string;
   minutesLive: number;
   /** Captura del juego en JPEG (base64), si el personaje puede ver la partida. */
   image?: string;
+  /** La voz entiende indicaciones de tono entre corchetes: el personaje puede usarlas. */
+  tags?: boolean;
 }
 
 export interface ClipCopy {
@@ -131,6 +154,8 @@ export interface Brain {
 
 export interface Voice {
   readonly sampleRate: number;
+  /** true si entiende indicaciones de tono entre corchetes ([serious], [chuckles]…). */
+  readonly tags?: boolean;
   /**
    * Convierte frases en audio PCM 16-bit mono. Llama a onAudio con cada trozo.
    * Si no produce audio (sin clave), el overlay solo muestra subtítulos.

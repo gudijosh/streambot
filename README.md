@@ -65,11 +65,16 @@ npm run dist
 - **Este directo**: mensajes, personas en el chat, eventos, intervenciones y créditos de voz gastados.
 - **Chat simulado**: mensajes de mentira para ensayar.
 
+### Jugar solo
+
+Un interruptor en la pestaña Directo: sin directo ni chat, el personaje mira la partida cada pocos segundos y la narra. Su voz queda grabada en OBS junto al juego, así que los clips salen ya narrados. Ver [docs/jugar-solo.md](docs/jugar-solo.md).
+
 ### Clips
 
 - **Momentos**: se marcan con el botón, con `!clip` en el chat o solos cuando el chat se dispara.
 - **Vídeos**: clips guardados, grabaciones de OBS y cualquier vídeo que añadas por su ruta.
 - **Editor**: marca inicio y fin, elige formato (vertical 9:16 con fondo difuminado, vertical recortado u horizontal), añade tu logo como marca de agua y exporta.
+- **Narrar con el personaje**: la IA mira el tramo marcado, escribe la narración y la monta con la voz del personaje sobre el juego, con subtítulos. Crea un vídeo nuevo.
 - **Texto para publicar**: la IA propone título, descripción y hashtags a partir de lo que pasó en el chat en ese momento.
 
 Exportar necesita ffmpeg. En el Mac:
@@ -101,7 +106,9 @@ Plataformas, co-host y voz, filtro y comandos del chat, clips, OBS y claves.
 
 ## El personaje
 
-Su personalidad, forma de hablar y límites están en [persona/personaje.md](persona/personaje.md). Edítalo a tu gusto; `{{NOMBRE}}` y `{{JUEGO}}` se rellenan con los ajustes del panel.
+Un capo paisa de ficción que habla con voseo y tiene tres registros: campechano, sube la voz y serio y espaciado. Su personalidad, forma de hablar y límites están en [persona/personaje.md](persona/personaje.md); `{{NOMBRE}}` y `{{JUEGO}}` se rellenan con los ajustes del panel.
+
+La voz por defecto es «SEBASTIAN PAISA» de ElevenLabs: añádela a «Mis voces» en tu cuenta. En el directo se usa Flash v2.5, que es rápido; al jugar solo y al narrar clips, v4, que suena más humano y entiende el acento paisa y los cambios de tono. Ver [docs/jugar-solo.md](docs/jugar-solo.md).
 
 ## Desarrollo
 

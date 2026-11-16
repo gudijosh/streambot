@@ -155,12 +155,12 @@ export class ObsController {
   }
 
   /** Captura reducida de lo que se está emitiendo, en JPEG base64. Devuelve null si no hay OBS. */
-  async screenshot(): Promise<string | null> {
+  async screenshot(width = 768): Promise<string | null> {
     if (!this.obs || !this.status.connected || !this.status.scene) return null;
     const shot = await this.obs.call("GetSourceScreenshot", {
       sourceName: this.status.scene,
       imageFormat: "jpg",
-      imageWidth: 768,
+      imageWidth: width,
       imageCompressionQuality: 60,
     });
     const comma = shot.imageData.indexOf(",");
