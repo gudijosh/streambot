@@ -82,6 +82,11 @@ export interface Settings {
     expressiveModelId: string;
     /** Indicación de acento que se antepone a cada texto con el modelo expresivo. */
     accentTag: string;
+    /**
+     * Voz para narrar clips después: "elevenlabs" (la configurada arriba) o "local"
+     * (el servidor de voz de este ordenador, aunque el directo use ElevenLabs).
+     */
+    clipsEngine: string;
   };
   obs: { enabled: boolean; url: string };
   filter: { bannedWords: string[]; blockLinks: boolean };

@@ -36,6 +36,7 @@ export const DEFAULT_SETTINGS: Settings = {
     localRefText: "",
     expressiveModelId: "eleven_v4",
     accentTag: "[strong Antioquian Paisa accent, drawn-out s]",
+    clipsEngine: "elevenlabs",
   },
   obs: { enabled: false, url: "ws://127.0.0.1:4455" },
   filter: { bannedWords: [], blockLinks: true },

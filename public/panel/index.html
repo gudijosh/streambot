@@ -257,6 +257,12 @@
             </select>
           </label>
           <label>Indicación de acento (modelo v4/v3) <input name="voice.accentTag" autocomplete="off"></label>
+          <label>Voz para narrar clips
+            <select name="voice.clipsEngine" data-engine-also="voice">
+              <option value="elevenlabs">ElevenLabs (la de arriba)</option>
+              <option value="local">Este Mac (voz local, gratis)</option>
+            </select>
+          </label>
         </div>
         <div data-engine="voice:local">
           <label>Servidor <input name="voice.localUrl" autocomplete="off"></label>

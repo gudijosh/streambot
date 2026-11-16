@@ -70,6 +70,41 @@ curl -X POST http://127.0.0.1:8000/v1/audio/speech \
 
 El campo `instruct` existe en el servidor, pero no he podido comprobar el resultado en español; puede que necesites varios intentos con la descripción.
 
+### Narrar clips en local y dejar ElevenLabs para el directo
+
+Narrar un clip no va en tiempo real, así que puedes usar un modelo local más lento pero mejor y ahorrarte los créditos de ElevenLabs, sin tocar el directo:
+
+1. Arranca el servidor de voz y elige un modelo que clone (ver la tabla de abajo).
+2. En Ajustes → Co-host y voz → Voz, deja ElevenLabs como motor y en **Voz para narrar clips** elige **Este Mac**. Aparecen los campos de la voz local.
+3. Pon el modelo, deja «Voz predefinida» vacía, y en «Audio de referencia para clonar» la ruta de tu grabación.
+
+El directo y el modo solo siguen con ElevenLabs. La voz local no entiende las indicaciones de tono ([serious], [chuckles]…): Claude escribe la narración sin ellas y los cambios de tono salen de la puntuación y de cómo suene la referencia.
+
+**Qué modelo usar para un canal monetizado:**
+
+| Modelo | Licencia | ¿Sirve? |
+|---|---|---|
+| Chatterbox Multilingual (`mlx-community/chatterbox-multilingual-v3`) | MIT | Sí. Clona con unos segundos de audio y habla español. **Recomendado.** |
+| Qwen3-TTS | Apache 2.0 según la mayoría de fuentes | Probablemente; confirma la licencia en su ficha de Hugging Face antes de monetizar. |
+| XTTS-v2, F5-Spanish, Fish Speech | No comerciales | No para un canal que gana dinero. |
+
+**La referencia:**
+
+- 20 a 30 segundos, una sola voz, sin música ni ruido, en WAV.
+- Que suene como quieres que suene el personaje: acento paisa, tono relajado y algún momento serio. El modelo copia el timbre y, en parte, el estilo.
+- Tiene que ser **tu voz** o la de alguien que te dé permiso por escrito. No sirven la voz de Sebastián Paisa de ElevenLabs (es de una persona real que solo la cede dentro de ElevenLabs), ni grabaciones de Pablo Escobar, ni de un imitador suyo.
+- Una forma fácil en el Mac: graba con QuickTime y convierte a WAV:
+
+```bash
+ffmpeg -i referencia.m4a -ac 1 -ar 24000 referencia.wav
+```
+
+Antes de narrar un clip entero, prueba cómo suena:
+
+```bash
+npm run probar-voz -- --model mlx-community/chatterbox-multilingual-v3 --voice "" --lang es --ref ~/referencia.wav
+```
+
 ## 2. Cerebro local con Ollama (opcional)
 
 ```bash

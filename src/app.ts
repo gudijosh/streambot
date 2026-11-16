@@ -355,7 +355,8 @@ export class StreamBotApp {
     }
     const { settings, secrets } = this.config;
     if (!secrets.anthropicApiKey) throw new Error("Narrar clips necesita la clave de Anthropic (Ajustes → Claves).");
-    if (this.voiceKind === "silent") {
+    const voice = this.clipVoice();
+    if (!voice) {
       throw new Error("Configura una voz (ElevenLabs o local) en Ajustes → Co-host y voz para narrar clips.");
     }
     const item = this.library.get(data.id);
@@ -386,7 +387,6 @@ export class StreamBotApp {
     const apiKey = secrets.anthropicApiKey;
     const model = settings.agent.model;
     const game = settings.game;
-    const voice = this.narrationVoice();
     report({ state: "running", progress: 0, stage: "Preparando" });
     narrateClip(
       { input: item.file, start, end, output, subtitles: data.subtitles !== false },
@@ -429,6 +429,18 @@ export class StreamBotApp {
   /** Voz para narrar: la expresiva si hay, si no la normal. */
   private narrationVoice(): Voice {
     return this.voiceKind === "elevenlabs" && this.expressiveVoice ? this.expressiveVoice : this.voice;
+  }
+
+  /**
+   * Voz para narrar clips: la local si así se ha elegido (aunque el directo use
+   * ElevenLabs), si no la misma que al jugar solo. null si no hay ninguna voz.
+   */
+  private clipVoice(): Voice | null {
+    const { voice } = this.config.settings;
+    if (!this.options.voice && voice.clipsEngine === "local") {
+      return voice.localModel.trim() ? new LocalVoice(voice) : null;
+    }
+    return this.voiceKind === "silent" ? null : this.narrationVoice();
   }
 
   // ---- Configuración ----

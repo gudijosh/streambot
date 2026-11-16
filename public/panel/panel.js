@@ -93,12 +93,16 @@ function fillForms(settings) {
 // Muestra solo los campos del motor elegido (nube o local) para el cerebro y la voz.
 function updateEngines() {
   for (const select of document.querySelectorAll("[data-engine-for]")) {
-    for (const group of document.querySelectorAll(`[data-engine^="${select.dataset.engineFor}:"]`)) {
-      group.hidden = group.dataset.engine !== `${select.dataset.engineFor}:${select.value}`;
+    const kind = select.dataset.engineFor;
+    // Otros selectores pueden pedir también los campos locales (p. ej. narrar clips en local).
+    const alsoLocal = [...document.querySelectorAll(`[data-engine-also="${kind}"]`)].some((s) => s.value === "local");
+    for (const group of document.querySelectorAll(`[data-engine^="${kind}:"]`)) {
+      const engine = group.dataset.engine.slice(kind.length + 1);
+      group.hidden = !(engine === select.value || (engine === "local" && alsoLocal));
     }
   }
 }
-for (const select of document.querySelectorAll("[data-engine-for]")) select.addEventListener("change", updateEngines);
+for (const select of document.querySelectorAll("[data-engine-for], [data-engine-also]")) select.addEventListener("change", updateEngines);
 
 function readForm(form) {
   const patch = {};
