@@ -215,3 +215,5 @@ progress { width: 100%; height: 10px; accent-color: var(--gold); }
 .segmented button { flex: 1; border: 0; border-radius: 0; background: var(--surface); color: var(--muted); }
 .segmented button[aria-checked="true"] { background: var(--gold); color: #1c1407; }
 #col-chat.solo-mode #chat, #col-chat.solo-mode .bar .switch { opacity: 0.4; }
+
+.row.scripts { margin: 0 0 12px; }

@@ -474,6 +474,9 @@ function connect() {
 $("#sim").addEventListener("change", (event) => act(api("simulator", { on: event.target.checked })));
 $("#pause").addEventListener("click", () => act(api("control", { action: state?.agent.paused ? "resume" : "pause" })));
 $("#skip").addEventListener("click", () => act(api("control", { action: "skip" })));
+for (const button of document.querySelectorAll("[data-script]")) {
+  button.addEventListener("click", () => act(api("script", { kind: button.dataset.script })));
+}
 $("#say").addEventListener("submit", (event) => {
   event.preventDefault();
   const input = $("#say-text");

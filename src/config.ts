@@ -43,6 +43,22 @@ export const DEFAULT_SETTINGS: Settings = {
   brand: { accent: "#e8b64c", ticker: true, socials: [] },
   clips: { folder: "", autoOnSpike: true, chatCommand: true, ffmpegPath: "" },
   commands: [],
+  // Guiones originales del personaje (ver docs/guiones.md).
+  scripts: {
+    intros: [
+      "[relaxed] [chuckles] Quiubo pues, mi gente… bienvenidos otra vez a la oficina. [excited, raising voice] ¡Hoy salimos a la calle con todo, ¿sí o qué?! [warm] Siéntense, pidan el tintico, que esto apenas arranca.",
+      "[warm] Ay, hombre, qué alegría verlos, parceros. Los reclutas nuevos, bienvenidos a la familia. [serious, low voice] Aquí hay una sola regla… el que entra… no se aburre. [chuckles] Hágale pues, vamos a camellar.",
+      "[relaxed] Vea pues, ya estamos al aire, mijos. La nave está lista, los muchachos están listos… [excited, raising voice] ¡y el patrón tiene ganas de calle! [warm] Pónganse cómodos.",
+    ],
+    outros: [
+      "[warm] Bueno, mi gente, por hoy cerramos la oficina. Gracias a todos los socios que estuvieron aquí… [serious, low voice] eso no se olvida. [relaxed] Descansen, que mañana hay más calle. Hágale pues.",
+      "[relaxed] Listo, muchachos, la vuelta de hoy quedó bien hecha. [excited, raising voice] ¡Así se trabaja en esta familia! [warm] Los espero en el próximo, no se me pierdan.",
+    ],
+    brb: [
+      "[relaxed] Un momentico, mi gente, el patrón va por un tintico. [serious, low voice] Nadie toca la nave… [chuckles] que yo me doy cuenta.",
+      "[warm] Ya vuelvo, parceros, no se me vayan. Cuiden la oficina mientras tanto.",
+    ],
+  },
   session: { mode: "stream" },
   solo: { narrateEverySeconds: 10 },
 };

@@ -110,6 +110,12 @@ export interface Settings {
   };
   /** Comandos del chat, uno por línea: "redes = Sígueme en TikTok". */
   commands: string[];
+  /** Guiones fijos que dicen los botones de la pestaña Directo, uno por línea. */
+  scripts: {
+    intros: string[];
+    outros: string[];
+    brb: string[];
+  };
   session: {
     /** "stream": responde al chat del directo. "solo": narra la partida sin directo. */
     mode: string;
