@@ -1,0 +1,91 @@
+# Fabrica StreamBot.dmg en un Mac de GitHub y lo publica con un enlace fijo:
+# https://github.com/gudijosh/streambot/releases/download/mac-latest/StreamBot.dmg
+name: App para Mac (.dmg)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - josh/happy-brown-awvb73
+    paths:
+      - "src/**"
+      - "public/**"
+      - "electron/**"
+      - "persona/**"
+      - "brand/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/mac-dmg.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mac-dmg
+  cancel-in-progress: true
+
+jobs:
+  dmg:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci --no-fund --no-audit
+
+      - name: Tests
+        run: npm test
+
+      - name: Compilar
+        run: npm run build
+
+      - name: Empaquetar StreamBot.app
+        run: npx electron-builder --mac dir --arm64 --publish never -c.mac.identity=null
+
+      - name: Firmar en local (ad hoc)
+        # Sin firma, macOS en Apple Silicon dice que la app «está dañada».
+        run: codesign --force --deep --sign - release/mac-arm64/StreamBot.app
+
+      - name: Prueba de humo
+        run: |
+          release/mac-arm64/StreamBot.app/Contents/MacOS/StreamBot > app.log 2>&1 &
+          APP_PID=$!
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:4747/panel/ > /dev/null; then
+              echo "El panel responde tras ${i} s."
+              kill "$APP_PID" || true
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "La app no arrancó el panel en 60 s. Registro:"
+          cat app.log
+          kill "$APP_PID" || true
+          exit 1
+
+      - name: Crear StreamBot.dmg
+        run: |
+          mkdir dmg
+          cp -R release/mac-arm64/StreamBot.app dmg/
+          ln -s /Applications dmg/Aplicaciones
+          hdiutil create -volname StreamBot -srcfolder dmg -ov -format UDZO StreamBot.dmg
+          ls -lh StreamBot.dmg
+
+      - name: Publicar en mac-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete mac-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create mac-latest StreamBot.dmg \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "StreamBot para Mac (última versión)" \
+            --notes "App de StreamBot para Mac con Apple Silicon (M1 a M4). Abre el .dmg, arrastra StreamBot a Aplicaciones y ábrela. La primera vez, macOS la bloquea porque no está firmada por un desarrollador de Apple: ve a Ajustes del Sistema → Privacidad y seguridad y pulsa «Abrir igualmente». Compilada desde ${GITHUB_SHA::7}."
