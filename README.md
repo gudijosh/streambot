@@ -14,6 +14,26 @@ TikTok ─┘        │                                                 │
 
 OBS captura la consola y emite. StreamBot pone el chat, el personaje y la voz, que llegan a OBS como una fuente de navegador.
 
+## Descargar la app para Mac
+
+**[Descargar StreamBot.dmg](https://github.com/gudijosh/streambot/releases/download/mac-latest/StreamBot.dmg)** (Mac con Apple Silicon, M1 a M4). Se vuelve a fabricar sola con cada cambio, así que el enlace siempre da la última versión.
+
+1. Abre el `.dmg` y arrastra **StreamBot** a **Aplicaciones**.
+2. Abre StreamBot. La primera vez, macOS avisa de que no puede verificarla, porque no está firmada por un desarrollador registrado en Apple: pulsa **Hecho**.
+3. Ve a **Ajustes del Sistema → Privacidad y seguridad**, baja hasta el final y pulsa **Abrir igualmente**. Pon tu contraseña. A partir de ahí se abre normal.
+
+La app lleva todo lo necesario para el panel, el chat, el co-host y OBS. Para exportar clips hace falta ffmpeg (`brew install ffmpeg`), y la voz local se instala aparte ([docs/voz-local.md](docs/voz-local.md)).
+
+## Instalar en el Mac con un solo comando
+
+Alternativa a la app: deja el código en tu Mac, útil si vas a tocarlo. Abre Terminal (Aplicaciones → Utilidades), pega esto y pulsa Intro:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/gudijosh/streambot/HEAD/scripts/instalar-mac.sh)"
+```
+
+Instala lo que hace falta (Homebrew, Node 22, git y ffmpeg), descarga StreamBot en `~/streambot` y crea la app **StreamBot** en Aplicaciones: ábrela con doble clic o desde Spotlight. Si el Mac no tiene Homebrew, te pedirá la contraseña una vez. Para actualizar StreamBot, vuelve a pegar el mismo comando. Si la ventana no se abre, el registro está en `~/Library/Logs/StreamBot.log`.
+
 ## Probar en dos minutos (sin claves)
 
 ```bash

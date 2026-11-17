@@ -81,9 +81,31 @@ Twitch y TikTok no necesitan clave para leer el chat.
 
 ## 6. La voz
 
-En ElevenLabs, crea la voz del personaje con Voice Design (por ejemplo: hombre colombiano de unos 45 años, acento paisa, voz grave, ritmo pausado y seguro). Guarda la que te guste y copia su ID en StreamBot → Ajustes → Co-host y voz. No uses la voz de una persona real: lo prohíben ElevenLabs y las normas de Rockstar.
+StreamBot usa la voz «SEBASTIAN PAISA» de la biblioteca de ElevenLabs. Guárdala en «Mis voces» de tu cuenta: cómo hacerlo, y qué hacer si el dueño la retira, está en [voz-elevenlabs.md](voz-elevenlabs.md). No clones la voz de una persona real sin su permiso: lo prohíben ElevenLabs y las normas de Rockstar.
 
-## 7. Antes de cada directo
+## 7. Cuánto cuesta el directo
+
+Cálculo con los ajustes por defecto: Claude Haiku 5.5 como cerebro, ElevenLabs Flash v2.5 como voz (0,5 créditos por carácter) y respuestas de una a tres frases, unas 150 letras.
+
+**Claude** cuesta unos 0,0003 USD por respuesta con Haiku: de 2 a 10 céntimos de dólar por hora, y de 1 a 3 USD al mes. Con Sonnet 5.5, más ingenioso, de 0,50 a 2 USD por hora. Hace falta una clave de API con saldo; la suscripción de Claude.ai no sirve.
+
+**ElevenLabs** es el gasto de verdad:
+
+| Cómo está el chat | Intervenciones por hora | Créditos por hora |
+|---|---|---|
+| Callado (habla solo cada 90 s) | ~40 | unos 3.000 |
+| Normal | ~120 | unos 9.000 |
+| Muy activo (casi sin parar) | ~240 | unos 18.000 |
+
+Con 26 horas al mes (tres directos de 2 horas a la semana) son entre 235.000 y 470.000 créditos: el plan Pro (600.000 créditos). Con unas 10 horas al mes basta el plan Creator (121.000 créditos). El plan Starter (30.000–40.000 créditos) da para unas 4 horas, y ahí van también los shorts con v4, que cuesta el doble por carácter.
+
+Para gastar menos:
+
+- Sube el tiempo para hablar solo o ponlo en 0 (Ajustes → Co-host y voz). Por defecto es de 90 segundos.
+- Sube la pausa mínima entre respuestas a 10–15 segundos: contestará a lo mejor del chat en vez de a todo.
+- Mira los créditos gastados en la pestaña Directo → «Este directo» y ajusta tras los primeros directos.
+
+## 8. Antes de cada directo
 
 1. Abre StreamBot y OBS.
 2. Comprueba en el panel que el overlay y OBS aparecen como conectados, y enciende el búfer de repetición.

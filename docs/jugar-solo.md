@@ -41,6 +41,8 @@ StreamBot viene configurado con la voz **SEBASTIAN PAISA** de la biblioteca de E
 1. En ElevenLabs, abre la Voice Library, busca «SEBASTIAN PAISA» y pulsa **Add to My Voices**.
 2. En StreamBot, pon la clave de API de esa misma cuenta en Ajustes → Claves.
 
+La voz pertenece a otra persona, que puede retirarla de la biblioteca. Cómo protegerte y cómo generar audios desde la web de ElevenLabs: [voz-elevenlabs.md](voz-elevenlabs.md).
+
 Se usan dos modelos de ElevenLabs:
 
 | Cuándo | Modelo | Por qué |

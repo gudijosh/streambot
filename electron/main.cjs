@@ -32,7 +32,18 @@ async function createWindow() {
   globalShortcut.register("CommandOrControl+Shift+S", () => core.skip());
 }
 
-app.whenReady().then(createWindow);
+// Si ya está abierto, volver a abrirlo solo trae la ventana al frente.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (!win) return;
+    if (win.isMinimized()) win.restore();
+    win.focus();
+  });
+  app.whenReady().then(createWindow);
+}
 app.on("will-quit", () => globalShortcut.unregisterAll());
 app.on("window-all-closed", async () => {
   if (core) await core.stop().catch(() => {});

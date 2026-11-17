@@ -16,7 +16,7 @@ export const DEFAULT_SETTINGS: Settings = {
     localUrl: "http://127.0.0.1:11434/v1",
     localModel: "qwen3.5:4b",
     minGapSeconds: 4,
-    idleSeconds: 45,
+    idleSeconds: 90,
     maxPerTurn: 3,
     watchGame: false,
   },

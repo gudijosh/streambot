@@ -35,6 +35,10 @@
   "build": {
     "appId": "com.streambot.app",
     "productName": "StreamBot",
+    "directories": {
+      "output": "release"
+    },
+    "asar": false,
     "files": [
       "dist/**",
       "public/**",
@@ -45,7 +49,14 @@
     ],
     "mac": {
       "category": "public.app-category.video",
-      "target": "dmg"
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ]
     }
   }
 }
