@@ -14,6 +14,16 @@ TikTok ─┘        │                                                 │
 
 OBS captura la consola y emite. StreamBot pone el chat, el personaje y la voz, que llegan a OBS como una fuente de navegador.
 
+## Instalar en el Mac con un solo comando
+
+Abre Terminal (Aplicaciones → Utilidades), pega esto y pulsa Intro:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/gudijosh/streambot/HEAD/scripts/instalar-mac.sh)"
+```
+
+Instala lo que hace falta (Homebrew, Node 22, git y ffmpeg), descarga StreamBot en `~/streambot` y crea la app **StreamBot** en Aplicaciones: ábrela con doble clic o desde Spotlight. Si el Mac no tiene Homebrew, te pedirá la contraseña una vez. Para actualizar StreamBot, vuelve a pegar el mismo comando. Si la ventana no se abre, el registro está en `~/Library/Logs/StreamBot.log`.
+
 ## Probar en dos minutos (sin claves)
 
 ```bash
